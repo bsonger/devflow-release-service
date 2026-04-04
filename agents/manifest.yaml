@@ -20,6 +20,7 @@ startup:
     - planner
     - generator
     - evaluator
+  delegation_policy: spawn_when_supported
 
 directories:
   roles: agents/roles
@@ -55,13 +56,10 @@ validation:
 
 special_rules:
   require_full_harness_for:
-    - application
     - manifest
     - job
     - intent
     - release-service
-    - verify-service
-    - controller
-    - worker
   require_swagger_judgement: true
   require_observability_review: true
+  require_sub_agents_when_supported: true

@@ -4,317 +4,6 @@
         "contact": {}
     },
     "paths": {
-        "/api/v1/applications": {
-            "get": {
-                "tags": [
-                    "Application"
-                ],
-                "summary": "获取应用列表",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "创建一个新的应用",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Application"
-                ],
-                "summary": "创建应用",
-                "parameters": [
-                    {
-                        "description": "Application Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/applications/{id}": {
-            "get": {
-                "tags": [
-                    "Application"
-                ],
-                "summary": "获取应用",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Application"
-                ],
-                "summary": "更新应用",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Application Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Application"
-                ],
-                "summary": "删除应用",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/applications/{id}/active_manifest": {
-            "patch": {
-                "tags": [
-                    "Application"
-                ],
-                "summary": "更新应用的 Active Manifest",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Application ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Active Manifest Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.UpdateActiveManifestRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/configurations": {
-            "get": {
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "获取配置列表",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "创建一个新的配置",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "创建配置",
-                "parameters": [
-                    {
-                        "description": "Configuration Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/configurations/{id}": {
-            "get": {
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "获取配置",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Configuration ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "更新配置",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Configuration ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Configuration Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Configuration"
-                ],
-                "summary": "删除配置",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Configuration ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/intents": {
             "get": {
                 "description": "按 kind、status、resource、application 等维度查询 execution intents",
@@ -328,7 +17,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent"
+                                "$ref": "#/definitions/model.Intent"
                             }
                         }
                     },
@@ -372,7 +61,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent"
+                            "$ref": "#/definitions/model.Intent"
                         }
                     },
                     "400": {
@@ -408,7 +97,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job"
+                                "$ref": "#/definitions/model.Job"
                             }
                         }
                     }
@@ -433,7 +122,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job"
+                            "$ref": "#/definitions/model.Job"
                         }
                     }
                 ],
@@ -441,7 +130,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/pkg_api.CreateResponse"
+                            "$ref": "#/definitions/api.CreateResponse"
                         }
                     }
                 }
@@ -466,7 +155,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job"
+                            "$ref": "#/definitions/model.Job"
                         }
                     }
                 }
@@ -490,7 +179,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job"
+                            "$ref": "#/definitions/model.Job"
                         }
                     }
                 ],
@@ -545,7 +234,7 @@
                         "schema": {
                             "type": "array",
                             "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest"
+                                "$ref": "#/definitions/model.Manifest"
                             }
                         }
                     }
@@ -570,7 +259,7 @@
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest"
+                            "$ref": "#/definitions/model.Manifest"
                         }
                     }
                 ],
@@ -578,7 +267,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/pkg_api.CreateResponse"
+                            "$ref": "#/definitions/api.CreateResponse"
                         }
                     },
                     "400": {
@@ -612,7 +301,7 @@
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest"
+                            "$ref": "#/definitions/model.Manifest"
                         }
                     }
                 }
@@ -642,7 +331,7 @@
                         "name": "data",
                         "in": "body",
                         "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.PatchManifestRequest"
+                            "$ref": "#/definitions/model.PatchManifestRequest"
                         }
                     }
                 ],
@@ -685,479 +374,21 @@
                     }
                 }
             }
-        },
-        "/api/v1/projects": {
-            "get": {
-                "tags": [
-                    "Project"
-                ],
-                "summary": "获取项目列表",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "创建一个新的项目",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Project"
-                ],
-                "summary": "创建项目",
-                "parameters": [
-                    {
-                        "description": "Project Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{id}": {
-            "get": {
-                "tags": [
-                    "Project"
-                ],
-                "summary": "获取项目",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Project"
-                ],
-                "summary": "更新项目",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Project Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Project"
-                ],
-                "summary": "删除项目",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/projects/{id}/applications": {
-            "get": {
-                "tags": [
-                    "Project"
-                ],
-                "summary": "获取项目下的应用列表",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Project ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify/argo/events": {
-            "post": {
-                "description": "由 Argo 或外部发布观察器回写 Job 级状态",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Verify"
-                ],
-                "summary": "回写发布状态",
-                "parameters": [
-                    {
-                        "description": "Release Status Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.VerifyReleaseStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify/healthz": {
-            "get": {
-                "tags": [
-                    "Verify"
-                ],
-                "summary": "Verify Service 健康检查",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify/release/steps": {
-            "post": {
-                "description": "由 Argo Application / Deployment / Rollout 观察器回写 Job steps",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Verify"
-                ],
-                "summary": "回写发布步骤",
-                "parameters": [
-                    {
-                        "description": "Release Step Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.VerifyReleaseStepRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify/tekton/events": {
-            "post": {
-                "description": "由 Tekton 或外部构建观察器回写 Manifest 级状态",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Verify"
-                ],
-                "summary": "回写构建状态",
-                "parameters": [
-                    {
-                        "description": "Build Status Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.VerifyBuildStatusRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/verify/tekton/steps": {
-            "post": {
-                "description": "由 Tekton TaskRun 观察器回写 Manifest steps",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Verify"
-                ],
-                "summary": "回写构建步骤",
-                "parameters": [
-                    {
-                        "description": "Build Step Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/pkg_api.VerifyBuildStepRequest"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "400": {
-                        "description": "Bad Request",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    },
-                    "500": {
-                        "description": "Internal Server Error",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {
-        "github_com_bsonger_devflow-release-service_pkg_model.Application": {
+        "api.CreateResponse": {
             "type": "object",
             "properties": {
-                "active_manifest_id": {
+                "execution_intent_id": {
                     "type": "string"
-                },
-                "active_manifest_name": {
-                    "type": "string"
-                },
-                "config_maps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ConfigMap"
-                    }
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "envs": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "array",
-                        "items": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.EnvVar"
-                        }
-                    }
                 },
                 "id": {
-                    "type": "string"
-                },
-                "internet": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Internet"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "project_id": {
-                    "type": "string"
-                },
-                "project_name": {
-                    "type": "string"
-                },
-                "replica": {
-                    "type": "integer"
-                },
-                "repo_url": {
-                    "type": "string"
-                },
-                "service": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Service"
-                },
-                "status": {
-                    "type": "string"
-                },
-                "type": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseType"
-                },
-                "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.ConfigMap": {
+        "model.ConfigMap": {
             "type": "object",
             "properties": {
                 "files_path": {
@@ -1174,33 +405,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Configuration": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "files": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.File"
-                    }
-                },
-                "id": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.EnvVar": {
+        "model.EnvVar": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1211,18 +416,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.File": {
-            "type": "object",
-            "properties": {
-                "content": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.Intent": {
+        "model.Intent": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -1265,7 +459,7 @@
                     "type": "string"
                 },
                 "kind": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentKind"
+                    "$ref": "#/definitions/model.IntentKind"
                 },
                 "last_error": {
                     "type": "string"
@@ -1292,14 +486,14 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentStatus"
+                    "$ref": "#/definitions/model.IntentStatus"
                 },
                 "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.IntentKind": {
+        "model.IntentKind": {
             "type": "string",
             "enum": [
                 "build",
@@ -1310,7 +504,7 @@
                 "IntentKindRelease"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.IntentStatus": {
+        "model.IntentStatus": {
             "type": "string",
             "enum": [
                 "Pending",
@@ -1325,7 +519,7 @@
                 "IntentFailed"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Internet": {
+        "model.Internet": {
             "type": "string",
             "enum": [
                 "internal",
@@ -1336,7 +530,7 @@
                 "External"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Job": {
+        "model.Job": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -1370,12 +564,12 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStatus"
+                    "$ref": "#/definitions/model.JobStatus"
                 },
                 "steps": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStep"
+                        "$ref": "#/definitions/model.JobStep"
                     }
                 },
                 "type": {
@@ -1386,7 +580,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.JobStatus": {
+        "model.JobStatus": {
             "type": "string",
             "enum": [
                 "Pending",
@@ -1409,7 +603,7 @@
                 "JobSyncFailed"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.JobStep": {
+        "model.JobStep": {
             "type": "object",
             "properties": {
                 "end_time": {
@@ -1428,11 +622,11 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus"
+                    "$ref": "#/definitions/model.StepStatus"
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Manifest": {
+        "model.Manifest": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -1450,7 +644,7 @@
                 "config_maps": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ConfigMap"
+                        "$ref": "#/definitions/model.ConfigMap"
                     }
                 },
                 "created_at": {
@@ -1467,7 +661,7 @@
                     "additionalProperties": {
                         "type": "array",
                         "items": {
-                            "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.EnvVar"
+                            "$ref": "#/definitions/model.EnvVar"
                         }
                     }
                 },
@@ -1481,7 +675,7 @@
                     "type": "string"
                 },
                 "internet": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Internet"
+                    "$ref": "#/definitions/model.Internet"
                 },
                 "name": {
                     "type": "string"
@@ -1493,26 +687,26 @@
                     "type": "integer"
                 },
                 "service": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Service"
+                    "$ref": "#/definitions/model.Service"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus"
+                    "$ref": "#/definitions/model.ManifestStatus"
                 },
                 "steps": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStep"
+                        "$ref": "#/definitions/model.ManifestStep"
                     }
                 },
                 "type": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseType"
+                    "$ref": "#/definitions/model.ReleaseType"
                 },
                 "updated_at": {
                     "type": "string"
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus": {
+        "model.ManifestStatus": {
             "type": "string",
             "enum": [
                 "Pending",
@@ -1527,7 +721,7 @@
                 "ManifestFailed"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.ManifestStep": {
+        "model.ManifestStep": {
             "type": "object",
             "properties": {
                 "end_time": {
@@ -1540,7 +734,7 @@
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus"
+                    "$ref": "#/definitions/model.StepStatus"
                 },
                 "task_name": {
                     "type": "string"
@@ -1550,7 +744,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.PatchManifestRequest": {
+        "model.PatchManifestRequest": {
             "type": "object",
             "properties": {
                 "commit_hash": {
@@ -1561,7 +755,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Port": {
+        "model.Port": {
             "type": "object",
             "properties": {
                 "name": {
@@ -1575,59 +769,7 @@
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Project": {
-            "type": "object",
-            "properties": {
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "description": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "key": {
-                    "type": "string"
-                },
-                "labels": {
-                    "type": "object",
-                    "additionalProperties": {
-                        "type": "string"
-                    }
-                },
-                "name": {
-                    "type": "string"
-                },
-                "namespace": {
-                    "type": "string"
-                },
-                "owner": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ProjectStatus"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.ProjectStatus": {
-            "type": "string",
-            "enum": [
-                "active",
-                "archived"
-            ],
-            "x-enum-varnames": [
-                "ProjectActive",
-                "ProjectArchived"
-            ]
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.ReleaseType": {
+        "model.ReleaseType": {
             "type": "string",
             "enum": [
                 "normal",
@@ -1640,18 +782,18 @@
                 "BlueGreen"
             ]
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.Service": {
+        "model.Service": {
             "type": "object",
             "properties": {
                 "ports": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Port"
+                        "$ref": "#/definitions/model.Port"
                     }
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.StepStatus": {
+        "model.StepStatus": {
             "type": "string",
             "enum": [
                 "Pending",
@@ -1665,144 +807,6 @@
                 "StepSucceeded",
                 "StepFailed"
             ]
-        },
-        "pkg_api.CreateResponse": {
-            "type": "object",
-            "properties": {
-                "execution_intent_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                }
-            }
-        },
-        "pkg_api.UpdateActiveManifestRequest": {
-            "type": "object",
-            "required": [
-                "manifest_id"
-            ],
-            "properties": {
-                "manifest_id": {
-                    "type": "string"
-                }
-            }
-        },
-        "pkg_api.VerifyBuildStatusRequest": {
-            "type": "object",
-            "required": [
-                "manifest_id",
-                "status"
-            ],
-            "properties": {
-                "external_ref": {
-                    "type": "string"
-                },
-                "intent_id": {
-                    "type": "string"
-                },
-                "manifest_id": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "pipeline_id": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus"
-                }
-            }
-        },
-        "pkg_api.VerifyBuildStepRequest": {
-            "type": "object",
-            "required": [
-                "manifest_id",
-                "status",
-                "task_name"
-            ],
-            "properties": {
-                "end_time": {
-                    "type": "string"
-                },
-                "manifest_id": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "pipeline_id": {
-                    "type": "string"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus"
-                },
-                "task_name": {
-                    "type": "string"
-                },
-                "task_run": {
-                    "type": "string"
-                }
-            }
-        },
-        "pkg_api.VerifyReleaseStatusRequest": {
-            "type": "object",
-            "required": [
-                "job_id",
-                "status"
-            ],
-            "properties": {
-                "external_ref": {
-                    "type": "string"
-                },
-                "intent_id": {
-                    "type": "string"
-                },
-                "job_id": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStatus"
-                }
-            }
-        },
-        "pkg_api.VerifyReleaseStepRequest": {
-            "type": "object",
-            "required": [
-                "job_id",
-                "status",
-                "step_name"
-            ],
-            "properties": {
-                "end_time": {
-                    "type": "string"
-                },
-                "job_id": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus"
-                },
-                "step_name": {
-                    "type": "string"
-                }
-            }
         }
     }
 }

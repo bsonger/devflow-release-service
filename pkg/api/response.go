@@ -1,6 +1,9 @@
 package api
 
-import "go.mongodb.org/mongo-driver/bson/primitive"
+import (
+	"github.com/bsonger/devflow-service-common/httpx"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+)
 
 type CreateResponse struct {
 	ID                string `json:"id"`
@@ -8,11 +11,9 @@ type CreateResponse struct {
 }
 
 func newCreateResponse(id primitive.ObjectID, intentID *primitive.ObjectID) CreateResponse {
-	resp := CreateResponse{
-		ID: id.Hex(),
+	resp := httpx.NewCreateResponse(id, intentID)
+	return CreateResponse{
+		ID:                resp.ID,
+		ExecutionIntentID: resp.ExecutionIntentID,
 	}
-	if intentID != nil && !intentID.IsZero() {
-		resp.ExecutionIntentID = intentID.Hex()
-	}
-	return resp
 }

@@ -23,6 +23,7 @@
   - `Planner`
   - `Generator`
   - `Evaluator`
+- 运行时支持 delegation 时，必须真实拉起这 3 个 sub-agent
 - 非简单需求先初始化 `agents/runs/YYYYMMDD-<slug>/`
 
 ## Must Not
@@ -38,5 +39,5 @@
 
 ## Pass/Fail
 
-- `Pass`：3 角色已进入同一个 run 上下文
+- `Pass`：3 角色已进入同一个 run 上下文；支持 delegation 时已真实启动 sub-agent
 - `Fail`：角色、工件、协议三者任一缺失

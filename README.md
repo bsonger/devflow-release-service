@@ -1,23 +1,30 @@
 # Devflow Release Service
 
-This repository was exported from the `bsonger/devflow` monorepo.
+`devflow-release-service` 只负责 `Manifest`、`Job`、`Intent`。
 
-GitHub target:
+边界：
 
-- `git@github.com:bsonger/devflow-release-service.git`
+- 对外 HTTP 资源只有 `manifests`、`jobs`、`intents`
+- 不提供 `Project`、`Application`、`Configuration`、`Verify` 的 API、router 或 Swagger
+- 启动骨架、通用中间件、分页/响应、观测基础设施优先复用 `../devflow-service-common`
 
-Go module:
+仓库文档：
 
-- `github.com/bsonger/devflow-release-service`
+- [架构](docs/architecture.md)
+- [接口规范](docs/api-spec.md)
+- [约束](docs/constraints.md)
+- [观测规范](docs/observability.md)
+- [Harness](docs/harness.md)
 
-Current scope:
+运行约定：
 
-- service entrypoint from `platform/release-service/cmd/main.go`
-- shared bootstrap from `platform/shared/bootstrap`
-- current shared domain/runtime packages from `pkg/`
+- 任何调用其他服务或外部系统的代码都必须同时产出 `metrics + trace + structured log`
+- 默认 harness 为 `Planner -> Generator -> Evaluator`
+- 运行时支持 delegation 时，必须真实启动对应 sub-agent，不允许只在单 agent 内口头模拟
 
-Notes:
+常用命令：
 
-- This is a first-stage split repo.
-- Shared packages are still copied from the monorepo so the service can compile independently.
-- A later cleanup phase can move stable shared pieces into `devflow-common` or another shared module.
+- `go run ./cmd`
+- `go build ./cmd/main.go`
+- `go test ./...`
+- `swag init -g cmd/main.go --parseDependency`
