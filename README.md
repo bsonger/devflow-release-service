@@ -15,6 +15,7 @@
 - [约束](docs/constraints.md)
 - [观测规范](docs/observability.md)
 - [Harness](docs/harness.md)
+- [资源说明](docs/resources/README.md)
 
 运行约定：
 
