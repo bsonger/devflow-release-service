@@ -95,8 +95,12 @@ func buildIntentFilter(c *gin.Context) (primitive.M, error) {
 	if manifestName := strings.TrimSpace(c.Query("manifest_name")); manifestName != "" {
 		filter["manifest_name"] = manifestName
 	}
-	if jobType := strings.TrimSpace(c.Query("job_type")); jobType != "" {
-		filter["job_type"] = jobType
+	releaseType := strings.TrimSpace(c.Query("release_type"))
+	if releaseType == "" {
+		releaseType = strings.TrimSpace(c.Query("job_type"))
+	}
+	if releaseType != "" {
+		filter["job_type"] = releaseType
 	}
 	if env := strings.TrimSpace(c.Query("env")); env != "" {
 		filter["env"] = env
@@ -120,7 +124,11 @@ func buildIntentFilter(c *gin.Context) (primitive.M, error) {
 	if err := setObjectIDFilter(filter, "manifest_id", c.Query("manifest_id")); err != nil {
 		return nil, err
 	}
-	if err := setObjectIDFilter(filter, "job_id", c.Query("job_id")); err != nil {
+	releaseID := c.Query("release_id")
+	if releaseID == "" {
+		releaseID = c.Query("job_id")
+	}
+	if err := setObjectIDFilter(filter, "job_id", releaseID); err != nil {
 		return nil, err
 	}
 

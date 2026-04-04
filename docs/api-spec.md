@@ -7,10 +7,10 @@
   - `POST /api/v1/manifests`
   - `GET /api/v1/manifests/:id`
   - `PATCH /api/v1/manifests/:id`
-- `Job`
-  - `GET /api/v1/jobs`
-  - `POST /api/v1/jobs`
-  - `GET /api/v1/jobs/:id`
+- `Release`
+  - `GET /api/v1/releases`
+  - `POST /api/v1/releases`
+  - `GET /api/v1/releases/:id`
 - `Intent`
   - `GET /api/v1/intents`
   - `GET /api/v1/intents/:id`
@@ -29,4 +29,4 @@
 
 ## Swagger
 
-Swagger 必须只包含 `Manifest`、`Job`、`Intent` 接口。
+Swagger 必须只包含 `Manifest`、`Release`、`Intent` 接口。

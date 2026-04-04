@@ -96,143 +96,6 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/jobs": {
-            "get": {
-                "tags": [
-                    "Job"
-                ],
-                "summary": "获取Job列表",
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "array",
-                            "items": {
-                                "$ref": "#/definitions/model.Job"
-                            }
-                        }
-                    }
-                }
-            },
-            "post": {
-                "description": "创建一个新的Job",
-                "consumes": [
-                    "application/json"
-                ],
-                "produces": [
-                    "application/json"
-                ],
-                "tags": [
-                    "Job"
-                ],
-                "summary": "创建Job",
-                "parameters": [
-                    {
-                        "description": "Job Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Job"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/api.CreateResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/api/v1/jobs/{id}": {
-            "get": {
-                "tags": [
-                    "Job"
-                ],
-                "summary": "获取Job",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Job ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/model.Job"
-                        }
-                    }
-                }
-            },
-            "put": {
-                "tags": [
-                    "Job"
-                ],
-                "summary": "更新Job",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Job ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    },
-                    {
-                        "description": "Job Data",
-                        "name": "data",
-                        "in": "body",
-                        "required": true,
-                        "schema": {
-                            "$ref": "#/definitions/model.Job"
-                        }
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            },
-            "delete": {
-                "tags": [
-                    "Job"
-                ],
-                "summary": "删除Job",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "Job ID",
-                        "name": "id",
-                        "in": "path",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "type": "object",
-                            "additionalProperties": {
-                                "type": "string"
-                            }
-                        }
-                    }
-                }
-            }
-        },
         "/api/v1/manifests": {
             "get": {
                 "tags": [
@@ -385,6 +248,82 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/api/v1/releases": {
+            "get": {
+                "tags": [
+                    "Release"
+                ],
+                "summary": "获取Release列表",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/model.Release"
+                            }
+                        }
+                    }
+                }
+            },
+            "post": {
+                "description": "创建一个新的Release",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Release"
+                ],
+                "summary": "创建Release",
+                "parameters": [
+                    {
+                        "description": "Release Data",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/model.Release"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/releases/{id}": {
+            "get": {
+                "tags": [
+                    "Release"
+                ],
+                "summary": "获取Release",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Release ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/model.Release"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -463,12 +402,6 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "job_id": {
-                    "type": "string"
-                },
-                "job_type": {
-                    "type": "string"
-                },
                 "kind": {
                     "$ref": "#/definitions/model.IntentKind"
                 },
@@ -485,6 +418,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "message": {
+                    "type": "string"
+                },
+                "release_id": {
+                    "type": "string"
+                },
+                "release_type": {
                     "type": "string"
                 },
                 "repo_url": {
@@ -540,102 +479,6 @@ const docTemplate = `{
                 "Internal",
                 "External"
             ]
-        },
-        "model.Job": {
-            "type": "object",
-            "properties": {
-                "application_id": {
-                    "type": "string"
-                },
-                "application_name": {
-                    "type": "string"
-                },
-                "created_at": {
-                    "type": "string"
-                },
-                "deleted_at": {
-                    "type": "string"
-                },
-                "env": {
-                    "type": "string"
-                },
-                "execution_intent_id": {
-                    "type": "string"
-                },
-                "id": {
-                    "type": "string"
-                },
-                "manifest_id": {
-                    "type": "string"
-                },
-                "manifest_name": {
-                    "type": "string"
-                },
-                "project_name": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.JobStatus"
-                },
-                "steps": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/model.JobStep"
-                    }
-                },
-                "type": {
-                    "type": "string"
-                },
-                "updated_at": {
-                    "type": "string"
-                }
-            }
-        },
-        "model.JobStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed",
-                "RollingBack",
-                "RolledBack",
-                "Syncing",
-                "SyncFailed"
-            ],
-            "x-enum-varnames": [
-                "JobPending",
-                "JobRunning",
-                "JobSucceeded",
-                "JobFailed",
-                "JobRollingBack",
-                "JobRolledBack",
-                "JobSyncing",
-                "JobSyncFailed"
-            ]
-        },
-        "model.JobStep": {
-            "type": "object",
-            "properties": {
-                "end_time": {
-                    "type": "string"
-                },
-                "message": {
-                    "type": "string"
-                },
-                "name": {
-                    "type": "string"
-                },
-                "progress": {
-                    "type": "integer"
-                },
-                "start_time": {
-                    "type": "string"
-                },
-                "status": {
-                    "$ref": "#/definitions/model.StepStatus"
-                }
-            }
         },
         "model.Manifest": {
             "type": "object",
@@ -777,6 +620,102 @@ const docTemplate = `{
                 },
                 "target_port": {
                     "type": "integer"
+                }
+            }
+        },
+        "model.Release": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "application_name": {
+                    "type": "string"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "deleted_at": {
+                    "type": "string"
+                },
+                "env": {
+                    "type": "string"
+                },
+                "execution_intent_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "manifest_id": {
+                    "type": "string"
+                },
+                "manifest_name": {
+                    "type": "string"
+                },
+                "project_name": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.ReleaseStatus"
+                },
+                "steps": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/model.ReleaseStep"
+                    }
+                },
+                "type": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "model.ReleaseStatus": {
+            "type": "string",
+            "enum": [
+                "Pending",
+                "Running",
+                "Succeeded",
+                "Failed",
+                "RollingBack",
+                "RolledBack",
+                "Syncing",
+                "SyncFailed"
+            ],
+            "x-enum-varnames": [
+                "ReleasePending",
+                "ReleaseRunning",
+                "ReleaseSucceeded",
+                "ReleaseFailed",
+                "ReleaseRollingBack",
+                "ReleaseRolledBack",
+                "ReleaseSyncing",
+                "ReleaseSyncFailed"
+            ]
+        },
+        "model.ReleaseStep": {
+            "type": "object",
+            "properties": {
+                "end_time": {
+                    "type": "string"
+                },
+                "message": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "progress": {
+                    "type": "integer"
+                },
+                "start_time": {
+                    "type": "string"
+                },
+                "status": {
+                    "$ref": "#/definitions/model.StepStatus"
                 }
             }
         },

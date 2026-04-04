@@ -22,7 +22,7 @@
   - 目标模块：`github.com/bsonger/devflow-config-service`
 
 - `devflow-release-service`
-  - 责任：`Manifest`、`Job`、`Intent` 查询、release intent 编排、worker 消费
+  - 责任：`Manifest`、`Release`、`Intent` 查询、release intent 编排、worker 消费
   - 入口：`platform/release-service/cmd/main.go`
   - 目标模块：`github.com/bsonger/devflow-release-service`
 

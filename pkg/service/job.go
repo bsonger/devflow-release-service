@@ -19,37 +19,31 @@ import (
 	"go.uber.org/zap"
 )
 
-var JobService = &jobService{}
+var ReleaseService = &releaseService{}
 
-type jobService struct{}
+type releaseService struct{}
 
-//	func NewJobService() *jobService {
-//		return &jobService{}
-//	}
-func (s *jobService) Create(ctx context.Context, job *model.Job) (primitive.ObjectID, error) {
+func (s *releaseService) Create(ctx context.Context, release *model.Release) (primitive.ObjectID, error) {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.type", job.Type),
-		zap.String("manifest.id", job.ManifestID.Hex()),
+		zap.String("release.type", release.Type),
+		zap.String("manifest.id", release.ManifestID.Hex()),
 	)
 
-	log.Info("job create started")
+	log.Info("release create started")
 
-	// ---------- 1️⃣ 获取 Manifest ----------
-	manifest, err := ManifestService.Get(ctx, job.ManifestID)
+	manifest, err := ManifestService.Get(ctx, release.ManifestID)
 	if err != nil {
 		log.Error("get manifest failed", zap.Error(err))
 		return primitive.NilObjectID, err
 	}
 
-	job.ManifestName = manifest.Name
-	job.ApplicationId = manifest.ApplicationId
+	release.ManifestName = manifest.Name
+	release.ApplicationId = manifest.ApplicationId
 
-	// ---------- 2️⃣ 默认值 ----------
-	if job.Type == "" {
-		job.Type = model.JobUpgrade
+	if release.Type == "" {
+		release.Type = model.ReleaseUpgrade
 	}
 
-	// ---------- 3️⃣ 获取 Application ----------
 	app, err := ApplicationService.Get(ctx, manifest.ApplicationId)
 	if err != nil {
 		log.Error("get application failed",
@@ -59,151 +53,148 @@ func (s *jobService) Create(ctx context.Context, job *model.Job) (primitive.Obje
 		return primitive.NilObjectID, err
 	}
 
-	job.ApplicationName = app.Name
-	job.ProjectName = app.ProjectName
-	job.Env = "prod"
+	release.ApplicationName = app.Name
+	release.ProjectName = app.ProjectName
+	release.Env = "prod"
 
-	// ---------- 4️⃣ 初始化 Job ----------
-	job.Status = model.JobPending
-	if len(job.Steps) == 0 {
-		job.Steps = model.DefaultJobSteps(app.Type, job.Type)
+	release.Status = model.ReleasePending
+	if len(release.Steps) == 0 {
+		release.Steps = model.DefaultReleaseSteps(app.Type, release.Type)
 	}
-	job.WithCreateDefault()
+	release.WithCreateDefault()
 
-	// ---------- 5️⃣ 落库 ----------
-	if err := mongo.Repo.Create(ctx, job); err != nil {
-		log.Error("create job record failed", zap.Error(err))
+	if err := mongo.Repo.Create(ctx, release); err != nil {
+		log.Error("create release record failed", zap.Error(err))
 		return primitive.NilObjectID, err
 	}
 
 	log = log.With(
-		zap.String("job.id", job.ID.Hex()),
-		zap.String("application.id", job.ApplicationId.Hex()),
+		zap.String("release.id", release.ID.Hex()),
+		zap.String("application.id", release.ApplicationId.Hex()),
 	)
 
-	log.Info("job record created")
+	log.Info("release record created")
 
 	if runtime.IsIntentMode() {
-		intentID, err := IntentService.CreateReleaseIntent(ctx, job)
+		intentID, err := IntentService.CreateReleaseIntent(ctx, release)
 		if err != nil {
 			log.Error("create release intent failed", zap.Error(err))
-			return job.ID, err
+			return release.ID, err
 		}
 
-		log.Info("job accepted in intent mode",
+		log.Info("release accepted in intent mode",
 			zap.String("intent_id", intentID.Hex()),
 		)
 
-		return job.ID, nil
+		return release.ID, nil
 	}
 
-	if err := s.DispatchRelease(ctx, job.ID); err != nil {
-		s.handleSyncArgoError(ctx, job, err)
-		return job.ID, err
+	if err := s.DispatchRelease(ctx, release.ID); err != nil {
+		s.handleSyncArgoError(ctx, release, err)
+		return release.ID, err
 	}
 
-	log.Info("job synced to argo successfully")
+	log.Info("release synced to argo successfully")
 
-	return job.ID, nil
+	return release.ID, nil
 }
 
-func (s *jobService) DispatchRelease(ctx context.Context, jobID primitive.ObjectID) error {
-	job, err := s.Get(ctx, jobID)
+func (s *releaseService) DispatchRelease(ctx context.Context, releaseID primitive.ObjectID) error {
+	release, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
 
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.id", job.ID.Hex()),
+		zap.String("release.id", release.ID.Hex()),
 	)
 
-	if err := s.updateStatus(ctx, job.ID, model.JobSyncing); err != nil {
-		log.Error("update job status to syncing failed", zap.Error(err))
+	if err := s.updateStatus(ctx, release.ID, model.ReleaseSyncing); err != nil {
+		log.Error("update release status to syncing failed", zap.Error(err))
 		return err
 	}
 
-	job.Status = model.JobSyncing
+	release.Status = model.ReleaseSyncing
 
-	log.Info("job status changed",
-		zap.String("job.status", string(job.Status)),
+	log.Info("release status changed",
+		zap.String("release.status", string(release.Status)),
 	)
 
-	if err := s.syncArgo(ctx, job); err != nil {
+	if err := s.syncArgo(ctx, release); err != nil {
 		return err
 	}
 
-	log.Info("job synced to argo successfully")
+	log.Info("release synced to argo successfully")
 	return nil
 }
 
-func (s *jobService) handleSyncArgoError(ctx context.Context, job *model.Job, err error) {
+func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model.Release, err error) {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.id", job.ID.Hex()),
-		zap.String("job.type", job.Type),
+		zap.String("release.id", release.ID.Hex()),
+		zap.String("release.type", release.Type),
 	)
 
 	log.Error("sync argo failed", zap.Error(err))
 
-	// 1️⃣ 更新状态 → Failed
-	if uErr := s.updateStatus(ctx, job.ID, model.JobSyncFailed); uErr != nil {
-		log.Error("update job status to failed failed", zap.Error(uErr))
+	if uErr := s.updateStatus(ctx, release.ID, model.ReleaseSyncFailed); uErr != nil {
+		log.Error("update release status to failed failed", zap.Error(uErr))
 	}
 }
 
-func (s *jobService) Get(ctx context.Context, id primitive.ObjectID) (*model.Job, error) {
+func (s *releaseService) Get(ctx context.Context, id primitive.ObjectID) (*model.Release, error) {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.id", id.Hex()),
-		zap.String("operation", "get_job"),
+		zap.String("release.id", id.Hex()),
+		zap.String("operation", "get_release"),
 	)
 
-	job := &model.Job{}
-	err := mongo.Repo.FindByID(ctx, job, id)
+	release := &model.Release{}
+	err := mongo.Repo.FindByID(ctx, release, id)
 	if err != nil {
-		log.Error("get job failed", zap.Error(err))
+		log.Error("get release failed", zap.Error(err))
 		return nil, err
 	}
-	if job.DeletedAt != nil {
-		log.Warn("job already deleted")
+	if release.DeletedAt != nil {
+		log.Warn("release already deleted")
 		return nil, mongoDriver.ErrNoDocuments
 	}
 
-	log.Debug("job fetched")
-	return job, nil
+	log.Debug("release fetched")
+	return release, nil
 }
 
-func (s *jobService) Update(ctx context.Context, job *model.Job) error {
+func (s *releaseService) Update(ctx context.Context, release *model.Release) error {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.id", job.ID.Hex()),
-		zap.String("operation", "update_job"),
+		zap.String("release.id", release.ID.Hex()),
+		zap.String("operation", "update_release"),
 	)
 
-	current := &model.Job{}
-	if err := mongo.Repo.FindByID(ctx, current, job.ID); err != nil {
-		log.Error("load job failed", zap.Error(err))
+	current := &model.Release{}
+	if err := mongo.Repo.FindByID(ctx, current, release.ID); err != nil {
+		log.Error("load release failed", zap.Error(err))
 		return err
 	}
 	if current.DeletedAt != nil {
-		log.Warn("update skipped for deleted job")
+		log.Warn("update skipped for deleted release")
 		return mongoDriver.ErrNoDocuments
 	}
 
-	job.CreatedAt = current.CreatedAt
-	job.DeletedAt = current.DeletedAt
-	job.WithUpdateDefault()
+	release.CreatedAt = current.CreatedAt
+	release.DeletedAt = current.DeletedAt
+	release.WithUpdateDefault()
 
-	if err := mongo.Repo.Update(ctx, job); err != nil {
-		log.Error("update job failed", zap.Error(err))
+	if err := mongo.Repo.Update(ctx, release); err != nil {
+		log.Error("update release failed", zap.Error(err))
 		return err
 	}
 
-	log.Debug("job updated")
+	log.Debug("release updated")
 	return nil
 }
 
-func (s *jobService) Delete(ctx context.Context, id primitive.ObjectID) error {
+func (s *releaseService) Delete(ctx context.Context, id primitive.ObjectID) error {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("job.id", id.Hex()),
-		zap.String("operation", "delete_job"),
+		zap.String("release.id", id.Hex()),
+		zap.String("operation", "delete_release"),
 	)
 
 	now := time.Now()
@@ -214,36 +205,36 @@ func (s *jobService) Delete(ctx context.Context, id primitive.ObjectID) error {
 		},
 	}
 
-	if err := mongo.Repo.UpdateByID(ctx, &model.Job{}, id, update); err != nil {
-		log.Error("delete job failed", zap.Error(err))
+	if err := mongo.Repo.UpdateByID(ctx, &model.Release{}, id, update); err != nil {
+		log.Error("delete release failed", zap.Error(err))
 		return err
 	}
 
-	log.Info("job deleted")
+	log.Info("release deleted")
 	return nil
 }
 
-func (s *jobService) List(ctx context.Context, filter primitive.M) ([]*model.Job, error) {
+func (s *releaseService) List(ctx context.Context, filter primitive.M) ([]*model.Release, error) {
 	log := logging.LoggerWithContext(ctx).With(
-		zap.String("operation", "list_jobs"),
+		zap.String("operation", "list_releases"),
 		zap.Any("filter", filter),
 	)
 
-	var jobs []*model.Job
-	if err := mongo.Repo.List(ctx, &model.Job{}, filter, &jobs); err != nil {
-		log.Error("list jobs failed", zap.Error(err))
+	var releases []*model.Release
+	if err := mongo.Repo.List(ctx, &model.Release{}, filter, &releases); err != nil {
+		log.Error("list releases failed", zap.Error(err))
 		return nil, err
 	}
 
-	log.Debug("list jobs success", zap.Int("count", len(jobs)))
-	return jobs, nil
+	log.Debug("list releases success", zap.Int("count", len(releases)))
+	return releases, nil
 }
 
-func (s *jobService) updateStatus(ctx context.Context, jobID primitive.ObjectID, status model.JobStatus) error {
+func (s *releaseService) updateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"status": bson.M{
-			"$nin": []model.JobStatus{model.JobSucceeded, model.JobFailed, status},
+			"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, status},
 		},
 	}
 	update := bson.M{
@@ -252,14 +243,14 @@ func (s *jobService) updateStatus(ctx context.Context, jobID primitive.ObjectID,
 			"updated_at": time.Now(),
 		},
 	}
-	return mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, update)
+	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
 }
 
-func (s *jobService) UpdateStatus(ctx context.Context, jobID primitive.ObjectID, status model.JobStatus) error {
-	return s.updateStatus(ctx, jobID, status)
+func (s *releaseService) UpdateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
+	return s.updateStatus(ctx, releaseID, status)
 }
 
-func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
 	if stepName == "" {
 		return nil
 	}
@@ -271,19 +262,19 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 		progress = 100
 	}
 
-	job, err := s.Get(ctx, jobID)
+	release, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
 
-	nextSteps := cloneJobSteps(job.Steps)
-	currentStep := findJobStep(job.Steps, stepName)
+	nextSteps := cloneReleaseSteps(release.Steps)
+	currentStep := findReleaseStep(release.Steps, stepName)
 	if currentStep == nil {
-		if err := s.createStepIfNotExists(ctx, jobID, stepName, status, progress, message, start, end); err != nil {
+		if err := s.createStepIfNotExists(ctx, releaseID, stepName, status, progress, message, start, end); err != nil {
 			return err
 		}
 
-		nextSteps = append(nextSteps, model.JobStep{
+		nextSteps = append(nextSteps, model.ReleaseStep{
 			Name:      stepName,
 			Progress:  progress,
 			Status:    status,
@@ -291,7 +282,7 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 			StartTime: start,
 			EndTime:   end,
 		})
-		return s.updateStatusFromSteps(ctx, jobID, job.Type, job.Status, nextSteps)
+		return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 	}
 
 	if currentStep.Status == model.StepFailed || currentStep.Status == model.StepSucceeded {
@@ -312,7 +303,7 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 	}
 
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"steps": bson.M{
 			"$elemMatch": bson.M{
 				"name": stepName,
@@ -323,16 +314,16 @@ func (s *jobService) UpdateStep(ctx context.Context, jobID primitive.ObjectID, s
 		},
 	}
 
-	if err := mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, bson.M{"$set": update}); err != nil {
+	if err := mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, bson.M{"$set": update}); err != nil {
 		return err
 	}
 
-	applyJobStepUpdate(nextSteps, stepName, status, progress, message, start, end)
-	return s.updateStatusFromSteps(ctx, jobID, job.Type, job.Status, nextSteps)
+	applyReleaseStepUpdate(nextSteps, stepName, status, progress, message, start, end)
+	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 }
 
-func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
-	step := model.JobStep{
+func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+	step := model.ReleaseStep{
 		Name:      stepName,
 		Progress:  progress,
 		Status:    status,
@@ -342,7 +333,7 @@ func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.
 	}
 
 	filter := bson.M{
-		"_id": jobID,
+		"_id": releaseID,
 		"steps": bson.M{
 			"$not": bson.M{
 				"$elemMatch": bson.M{
@@ -361,10 +352,10 @@ func (s *jobService) createStepIfNotExists(ctx context.Context, jobID primitive.
 		},
 	}
 
-	return mongo.Repo.UpdateOne(ctx, &model.Job{}, filter, update)
+	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
 }
 
-func findJobStep(steps []model.JobStep, stepName string) *model.JobStep {
+func findReleaseStep(steps []model.ReleaseStep, stepName string) *model.ReleaseStep {
 	for _, step := range steps {
 		if step.Name == stepName {
 			current := step
@@ -374,16 +365,16 @@ func findJobStep(steps []model.JobStep, stepName string) *model.JobStep {
 	return nil
 }
 
-func cloneJobSteps(steps []model.JobStep) []model.JobStep {
+func cloneReleaseSteps(steps []model.ReleaseStep) []model.ReleaseStep {
 	if len(steps) == 0 {
 		return nil
 	}
-	cloned := make([]model.JobStep, len(steps))
+	cloned := make([]model.ReleaseStep, len(steps))
 	copy(cloned, steps)
 	return cloned
 }
 
-func applyJobStepUpdate(steps []model.JobStep, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) {
+func applyReleaseStepUpdate(steps []model.ReleaseStep, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) {
 	for i := range steps {
 		if steps[i].Name != stepName {
 			continue
@@ -401,58 +392,56 @@ func applyJobStepUpdate(steps []model.JobStep, stepName string, status model.Ste
 	}
 }
 
-func (s *jobService) updateStatusFromSteps(ctx context.Context, jobID primitive.ObjectID, jobType string, currentStatus model.JobStatus, steps []model.JobStep) error {
-	nextStatus := model.DeriveJobStatusFromSteps(jobType, currentStatus, steps)
+func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID primitive.ObjectID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
+	nextStatus := model.DeriveReleaseStatusFromSteps(releaseAction, currentStatus, steps)
 	if nextStatus == currentStatus {
 		return nil
 	}
-	return s.updateStatus(ctx, jobID, nextStatus)
+	return s.updateStatus(ctx, releaseID, nextStatus)
 }
 
-func (s *jobService) syncArgo(ctx context.Context, job *model.Job) error {
-
+func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) error {
 	log := logging.LoggerWithContext(ctx)
 	var err error
-	application := job.GenerateApplication()
-	// 3.2 获取当前 trace context
+	application := release.GenerateApplication()
 	sc := trace.SpanContextFromContext(ctx)
 	application.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
 		model.SpanAnnotation:    sc.SpanID().String(),
 	}
 	application.Labels = map[string]string{
-		"status":         string(model.JobRunning),
-		model.JobIDLabel: job.ID.Hex(),
+		"status":             string(model.ReleaseRunning),
+		model.ReleaseIDLabel: release.ID.Hex(),
 	}
 
-	switch job.Type {
-	case model.JobInstall:
+	switch release.Type {
+	case model.ReleaseInstall:
 		err = argo.CreateApplication(ctx, application)
 		if err == nil {
 			err = s.syncArgoApplication(ctx, application.Name)
 		}
-	case model.JobUpgrade, model.JobRollback:
+	case model.ReleaseUpgrade, model.ReleaseRollback:
 		err = argo.UpdateApplication(ctx, application)
 	default:
-		err = errors.New("unknown job type")
+		err = errors.New("unknown release type")
 	}
 
 	if err != nil {
-		log.Error("Argo sync failed",
-			zap.String("job_id", job.ID.Hex()),
-			zap.String("type", job.Type),
+		log.Error("argo sync failed",
+			zap.String("release_id", release.ID.Hex()),
+			zap.String("type", release.Type),
 			zap.Error(err),
 		)
 		return err
 	}
 
-	log.Info("Argo sync triggered",
-		zap.String("job_id", job.ID.Hex()),
+	log.Info("argo sync triggered",
+		zap.String("release_id", release.ID.Hex()),
 	)
 	return nil
 }
 
-func (s *jobService) syncArgoApplication(ctx context.Context, appName string) error {
+func (s *releaseService) syncArgoApplication(ctx context.Context, appName string) error {
 	log := logging.LoggerWithContext(ctx).With(
 		zap.String("application.name", appName),
 	)
@@ -462,10 +451,10 @@ func (s *jobService) syncArgoApplication(ctx context.Context, appName string) er
 		Sync: &appv1.SyncOperation{},
 	})
 	if err != nil {
-		log.Error("Argo application sync failed", zap.Error(err))
+		log.Error("argo application sync failed", zap.Error(err))
 		return err
 	}
 
-	log.Info("Argo application sync triggered")
+	log.Info("argo application sync triggered")
 	return nil
 }

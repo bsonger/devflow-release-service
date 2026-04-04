@@ -2,7 +2,7 @@
 
 ## Ownership
 
-- `Manifest`、`Job`、`Intent` 属于 release-service 独占边界
+- `Manifest`、`Release`、`Intent` 属于 release-service 独占边界
 - `Intent` 是 release/build 执行意图记录，不是通用跨仓库扩展点
 
 ## Prohibited

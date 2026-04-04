@@ -48,10 +48,6 @@ definitions:
         type: string
       id:
         type: string
-      job_id:
-        type: string
-      job_type:
-        type: string
       kind:
         $ref: '#/definitions/model.IntentKind'
       last_error:
@@ -63,6 +59,10 @@ definitions:
       manifest_name:
         type: string
       message:
+        type: string
+      release_id:
+        type: string
+      release_type:
         type: string
       repo_url:
         type: string
@@ -103,74 +103,6 @@ definitions:
     x-enum-varnames:
     - Internal
     - External
-  model.Job:
-    properties:
-      application_id:
-        type: string
-      application_name:
-        type: string
-      created_at:
-        type: string
-      deleted_at:
-        type: string
-      env:
-        type: string
-      execution_intent_id:
-        type: string
-      id:
-        type: string
-      manifest_id:
-        type: string
-      manifest_name:
-        type: string
-      project_name:
-        type: string
-      status:
-        $ref: '#/definitions/model.JobStatus'
-      steps:
-        items:
-          $ref: '#/definitions/model.JobStep'
-        type: array
-      type:
-        type: string
-      updated_at:
-        type: string
-    type: object
-  model.JobStatus:
-    enum:
-    - Pending
-    - Running
-    - Succeeded
-    - Failed
-    - RollingBack
-    - RolledBack
-    - Syncing
-    - SyncFailed
-    type: string
-    x-enum-varnames:
-    - JobPending
-    - JobRunning
-    - JobSucceeded
-    - JobFailed
-    - JobRollingBack
-    - JobRolledBack
-    - JobSyncing
-    - JobSyncFailed
-  model.JobStep:
-    properties:
-      end_time:
-        type: string
-      message:
-        type: string
-      name:
-        type: string
-      progress:
-        type: integer
-      start_time:
-        type: string
-      status:
-        $ref: '#/definitions/model.StepStatus'
-    type: object
   model.Manifest:
     properties:
       application_id:
@@ -267,6 +199,74 @@ definitions:
       target_port:
         type: integer
     type: object
+  model.Release:
+    properties:
+      application_id:
+        type: string
+      application_name:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      env:
+        type: string
+      execution_intent_id:
+        type: string
+      id:
+        type: string
+      manifest_id:
+        type: string
+      manifest_name:
+        type: string
+      project_name:
+        type: string
+      status:
+        $ref: '#/definitions/model.ReleaseStatus'
+      steps:
+        items:
+          $ref: '#/definitions/model.ReleaseStep'
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  model.ReleaseStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    - RollingBack
+    - RolledBack
+    - Syncing
+    - SyncFailed
+    type: string
+    x-enum-varnames:
+    - ReleasePending
+    - ReleaseRunning
+    - ReleaseSucceeded
+    - ReleaseFailed
+    - ReleaseRollingBack
+    - ReleaseRolledBack
+    - ReleaseSyncing
+    - ReleaseSyncFailed
+  model.ReleaseStep:
+    properties:
+      end_time:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      progress:
+        type: integer
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/model.StepStatus'
+    type: object
   model.ReleaseType:
     enum:
     - normal
@@ -352,95 +352,6 @@ paths:
       summary: 获取执行意图
       tags:
       - Intent
-  /api/v1/jobs:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Job'
-            type: array
-      summary: 获取Job列表
-      tags:
-      - Job
-    post:
-      consumes:
-      - application/json
-      description: 创建一个新的Job
-      parameters:
-      - description: Job Data
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/model.Job'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.CreateResponse'
-      summary: 创建Job
-      tags:
-      - Job
-  /api/v1/jobs/{id}:
-    delete:
-      parameters:
-      - description: Job ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 删除Job
-      tags:
-      - Job
-    get:
-      parameters:
-      - description: Job ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Job'
-      summary: 获取Job
-      tags:
-      - Job
-    put:
-      parameters:
-      - description: Job ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Job Data
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/model.Job'
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 更新Job
-      tags:
-      - Job
   /api/v1/manifests:
     get:
       responses:
@@ -541,4 +452,53 @@ paths:
       summary: Patch Manifest
       tags:
       - Manifest
+  /api/v1/releases:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/model.Release'
+            type: array
+      summary: 获取Release列表
+      tags:
+      - Release
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的Release
+      parameters:
+      - description: Release Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/model.Release'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/api.CreateResponse'
+      summary: 创建Release
+      tags:
+      - Release
+  /api/v1/releases/{id}:
+    get:
+      parameters:
+      - description: Release ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/model.Release'
+      summary: 获取Release
+      tags:
+      - Release
 swagger: "2.0"

@@ -1,10 +1,10 @@
 # Devflow Release Service
 
-`devflow-release-service` 只负责 `Manifest`、`Job`、`Intent`。
+`devflow-release-service` 只负责 `Manifest`、`Release`、`Intent`。
 
 边界：
 
-- 对外 HTTP 资源只有 `manifests`、`jobs`、`intents`
+- 对外 HTTP 资源只有 `manifests`、`releases`、`intents`
 - 不提供 `Project`、`Application`、`Configuration`、`Verify` 的 API、router 或 Swagger
 - 启动骨架、通用中间件、分页/响应、观测基础设施优先复用 `../devflow-service-common`
 

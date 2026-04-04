@@ -31,7 +31,7 @@ func main() {
 			EnableSwagger: true,
 			Modules: []router.Module{
 				router.ModuleManifest,
-				router.ModuleJob,
+				router.ModuleRelease,
 				router.ModuleIntent,
 			},
 		},

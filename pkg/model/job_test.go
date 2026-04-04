@@ -2,8 +2,8 @@ package model
 
 import "testing"
 
-func TestDefaultJobStepsNormal(t *testing.T) {
-	steps := DefaultJobSteps(Normal, JobUpgrade)
+func TestDefaultReleaseStepsNormal(t *testing.T) {
+	steps := DefaultReleaseSteps(Normal, ReleaseUpgrade)
 	if len(steps) != 2 {
 		t.Fatalf("unexpected step count: got %d want 2", len(steps))
 	}
@@ -15,8 +15,8 @@ func TestDefaultJobStepsNormal(t *testing.T) {
 	}
 }
 
-func TestDefaultJobStepsCanary(t *testing.T) {
-	steps := DefaultJobSteps(Canary, JobUpgrade)
+func TestDefaultReleaseStepsCanary(t *testing.T) {
+	steps := DefaultReleaseSteps(Canary, ReleaseUpgrade)
 	if len(steps) != 5 {
 		t.Fatalf("unexpected step count: got %d want 5", len(steps))
 	}
@@ -28,8 +28,8 @@ func TestDefaultJobStepsCanary(t *testing.T) {
 	}
 }
 
-func TestDefaultJobStepsBlueGreenRollback(t *testing.T) {
-	steps := DefaultJobSteps(BlueGreen, JobRollback)
+func TestDefaultReleaseStepsBlueGreenRollback(t *testing.T) {
+	steps := DefaultReleaseSteps(BlueGreen, ReleaseRollback)
 	if len(steps) != 3 {
 		t.Fatalf("unexpected step count: got %d want 3", len(steps))
 	}
@@ -44,74 +44,74 @@ func TestDefaultJobStepsBlueGreenRollback(t *testing.T) {
 	}
 }
 
-func TestDeriveJobStatusFromSteps(t *testing.T) {
+func TestDeriveReleaseStatusFromSteps(t *testing.T) {
 	tests := []struct {
 		name          string
-		jobType       string
-		currentStatus JobStatus
-		steps         []JobStep
-		want          JobStatus
+		releaseAction string
+		currentStatus ReleaseStatus
+		steps         []ReleaseStep
+		want          ReleaseStatus
 	}{
 		{
-			name:    "pending when all pending",
-			jobType: JobUpgrade,
-			steps: []JobStep{
+			name:          "pending when all pending",
+			releaseAction: ReleaseUpgrade,
+			steps: []ReleaseStep{
 				{Name: "apply", Status: StepPending},
 				{Name: "deploy", Status: StepPending},
 			},
-			want: JobPending,
+			want: ReleasePending,
 		},
 		{
-			name:    "running when some started",
-			jobType: JobUpgrade,
-			steps: []JobStep{
+			name:          "running when some started",
+			releaseAction: ReleaseUpgrade,
+			steps: []ReleaseStep{
 				{Name: "apply", Status: StepSucceeded},
 				{Name: "deploy", Status: StepRunning},
 			},
-			want: JobRunning,
+			want: ReleaseRunning,
 		},
 		{
-			name:    "succeeded when all succeeded",
-			jobType: JobUpgrade,
-			steps: []JobStep{
+			name:          "succeeded when all succeeded",
+			releaseAction: ReleaseUpgrade,
+			steps: []ReleaseStep{
 				{Name: "apply", Status: StepSucceeded},
 				{Name: "deploy", Status: StepSucceeded},
 			},
-			want: JobSucceeded,
+			want: ReleaseSucceeded,
 		},
 		{
-			name:    "rolled back for rollback job",
-			jobType: JobRollback,
-			steps: []JobStep{
+			name:          "rolled back for rollback release",
+			releaseAction: ReleaseRollback,
+			steps: []ReleaseStep{
 				{Name: "apply rollback", Status: StepSucceeded},
 				{Name: "deploy ready", Status: StepSucceeded},
 			},
-			want: JobRolledBack,
+			want: ReleaseRolledBack,
 		},
 		{
-			name:    "failed when one step failed",
-			jobType: JobUpgrade,
-			steps: []JobStep{
+			name:          "failed when one step failed",
+			releaseAction: ReleaseUpgrade,
+			steps: []ReleaseStep{
 				{Name: "apply", Status: StepSucceeded},
 				{Name: "deploy", Status: StepFailed},
 			},
-			want: JobFailed,
+			want: ReleaseFailed,
 		},
 		{
 			name:          "preserve terminal sync failed",
-			jobType:       JobUpgrade,
-			currentStatus: JobSyncFailed,
-			steps: []JobStep{
+			releaseAction: ReleaseUpgrade,
+			currentStatus: ReleaseSyncFailed,
+			steps: []ReleaseStep{
 				{Name: "apply", Status: StepSucceeded},
 				{Name: "deploy", Status: StepSucceeded},
 			},
-			want: JobSyncFailed,
+			want: ReleaseSyncFailed,
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := DeriveJobStatusFromSteps(tt.jobType, tt.currentStatus, tt.steps)
+			got := DeriveReleaseStatusFromSteps(tt.releaseAction, tt.currentStatus, tt.steps)
 			if got != tt.want {
 				t.Fatalf("unexpected status: got %q want %q", got, tt.want)
 			}

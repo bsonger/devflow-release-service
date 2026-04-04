@@ -67,3 +67,25 @@ func TestBuildIntentFilterInvalidObjectID(t *testing.T) {
 		t.Fatalf("unexpected error: got %q want %q", err.Error(), "invalid application_id")
 	}
 }
+
+func TestBuildIntentFilterReleaseIDAlias(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+
+	releaseID := primitive.NewObjectID()
+
+	recorder := httptest.NewRecorder()
+	ctx, _ := gin.CreateTestContext(recorder)
+	ctx.Request = httptest.NewRequest(http.MethodGet, "/api/v1/intents?release_id="+releaseID.Hex()+"&release_type=Upgrade", nil)
+
+	filter, err := buildIntentFilter(ctx)
+	if err != nil {
+		t.Fatalf("buildIntentFilter returned error: %v", err)
+	}
+
+	if got := filter["job_id"]; got != releaseID {
+		t.Fatalf("unexpected job_id filter: got %#v want %#v", got, releaseID)
+	}
+	if got := filter["job_type"]; got != "Upgrade" {
+		t.Fatalf("unexpected job_type filter: got %#v want %q", got, "Upgrade")
+	}
+}

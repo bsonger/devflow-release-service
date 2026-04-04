@@ -54,19 +54,19 @@ func (s *intentService) CreateBuildIntent(ctx context.Context, manifest *model.M
 	return intent.ID, nil
 }
 
-func (s *intentService) CreateReleaseIntent(ctx context.Context, job *model.Job) (primitive.ObjectID, error) {
+func (s *intentService) CreateReleaseIntent(ctx context.Context, release *model.Release) (primitive.ObjectID, error) {
 	intent := &model.Intent{
 		Kind:            model.IntentKindRelease,
 		Status:          model.IntentPending,
-		ResourceType:    "job",
-		ResourceID:      job.ID,
-		ApplicationID:   job.ApplicationId,
-		ApplicationName: job.ApplicationName,
-		ManifestID:      objectIDPtr(job.ManifestID),
-		ManifestName:    job.ManifestName,
-		JobID:           objectIDPtr(job.ID),
-		JobType:         job.Type,
-		Env:             job.Env,
+		ResourceType:    "release",
+		ResourceID:      release.ID,
+		ApplicationID:   release.ApplicationId,
+		ApplicationName: release.ApplicationName,
+		ManifestID:      objectIDPtr(release.ManifestID),
+		ManifestName:    release.ManifestName,
+		ReleaseID:       objectIDPtr(release.ID),
+		ReleaseType:     release.Type,
+		Env:             release.Env,
 	}
 	intent.WithCreateDefault()
 
@@ -74,14 +74,14 @@ func (s *intentService) CreateReleaseIntent(ctx context.Context, job *model.Job)
 		return primitive.NilObjectID, err
 	}
 
-	if err := s.bindIntentToJob(ctx, job.ID, intent.ID); err != nil {
+	if err := s.bindIntentToRelease(ctx, release.ID, intent.ID); err != nil {
 		return intent.ID, err
 	}
-	job.ExecutionIntentID = objectIDPtr(intent.ID)
+	release.ExecutionIntentID = objectIDPtr(intent.ID)
 
 	logging.LoggerWithContext(ctx).Info("release intent created",
 		zap.String("intent_id", intent.ID.Hex()),
-		zap.String("job_id", job.ID.Hex()),
+		zap.String("release_id", release.ID.Hex()),
 	)
 
 	return intent.ID, nil
@@ -234,8 +234,8 @@ func (s *intentService) bindIntentToManifest(ctx context.Context, manifestID, in
 	})
 }
 
-func (s *intentService) bindIntentToJob(ctx context.Context, jobID, intentID primitive.ObjectID) error {
-	return mongo.Repo.UpdateByID(ctx, &model.Job{}, jobID, bson.M{
+func (s *intentService) bindIntentToRelease(ctx context.Context, releaseID, intentID primitive.ObjectID) error {
+	return mongo.Repo.UpdateByID(ctx, &model.Release{}, releaseID, bson.M{
 		"$set": bson.M{
 			"execution_intent_id": intentID,
 			"updated_at":          time.Now(),

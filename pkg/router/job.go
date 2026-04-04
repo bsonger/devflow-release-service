@@ -5,12 +5,12 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-func RegisterJobRoutes(rg *gin.RouterGroup) {
-	job := rg.Group("/jobs")
+func RegisterReleaseRoutes(rg *gin.RouterGroup) {
+	release := rg.Group("/releases")
 
-	job.GET("", api.JobRouteApi.List)
-	job.GET("/:id", api.JobRouteApi.Get)
-	job.POST("", api.JobRouteApi.Create)
-	//job.PUT("/:id", api.JobRouteApi.Update)
-	//job.DELETE("/:id", api.JobRouteApi.Delete)
+	release.GET("", api.ReleaseRouteApi.List)
+	release.GET("/:id", api.ReleaseRouteApi.Get)
+	release.POST("", api.ReleaseRouteApi.Create)
+	//release.PUT("/:id", api.ReleaseRouteApi.Update)
+	//release.DELETE("/:id", api.ReleaseRouteApi.Delete)
 }

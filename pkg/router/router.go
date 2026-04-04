@@ -16,7 +16,7 @@ type Module string
 
 const (
 	ModuleManifest Module = "manifest"
-	ModuleJob      Module = "job"
+	ModuleRelease  Module = "release"
 	ModuleIntent   Module = "intent"
 )
 
@@ -33,7 +33,7 @@ func NewRouter() *gin.Engine {
 		EnableSwagger: true,
 		Modules: []Module{
 			ModuleManifest,
-			ModuleJob,
+			ModuleRelease,
 			ModuleIntent,
 		},
 	})
@@ -104,8 +104,8 @@ func registerModules(api *gin.RouterGroup, opts Options) {
 		switch module {
 		case ModuleManifest:
 			RegisterManifestRoutes(api)
-		case ModuleJob:
-			RegisterJobRoutes(api)
+		case ModuleRelease:
+			RegisterReleaseRoutes(api)
 		case ModuleIntent:
 			RegisterIntentRoutes(api)
 		}

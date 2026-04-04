@@ -22,7 +22,7 @@
 ## Log Fields
 
 - 基础字段：`service`、`trace_id`、`span_id`、`request_id`
-- 资源字段：`application_id`、`manifest_id`、`job_id`、`intent_id`、`external_ref`
+- 资源字段：`application_id`、`manifest_id`、`release_id`、`intent_id`、`external_ref`
 
 ## Profile
 
