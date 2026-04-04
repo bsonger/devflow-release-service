@@ -1,0 +1,23 @@
+# Intent 类型速查
+
+- id: string
+- kind: build | release
+- status: Pending | Running | Succeeded | Failed
+- resource_type: string
+- resource_id: string
+- application_id: string
+- application_name: string
+- manifest_id: string
+- manifest_name: string
+- job_id: string
+- job_type: string
+- env: string
+- repo_url: string
+- branch: string
+- external_ref: string
+- message: string
+- last_error: string
+- claimed_by: string
+- claimed_at: time
+- lease_expires_at: time
+- attempt_count: int

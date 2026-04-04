@@ -1,0 +1,1196 @@
+definitions:
+  github_com_bsonger_devflow-release-service_pkg_model.Application:
+    properties:
+      active_manifest_id:
+        type: string
+      active_manifest_name:
+        type: string
+      config_maps:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ConfigMap'
+        type: array
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      envs:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.EnvVar'
+          type: array
+        type: object
+      id:
+        type: string
+      internet:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Internet'
+      name:
+        type: string
+      project_id:
+        type: string
+      project_name:
+        type: string
+      replica:
+        type: integer
+      repo_url:
+        type: string
+      service:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Service'
+      status:
+        type: string
+      type:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseType'
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.ConfigMap:
+    properties:
+      files_path:
+        additionalProperties:
+          type: string
+        type: object
+      mount_path:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Configuration:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      files:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.File'
+        type: array
+      id:
+        type: string
+      name:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.EnvVar:
+    properties:
+      name:
+        type: string
+      value:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.File:
+    properties:
+      content:
+        type: string
+      name:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Intent:
+    properties:
+      application_id:
+        type: string
+      application_name:
+        type: string
+      attempt_count:
+        type: integer
+      branch:
+        type: string
+      claimed_at:
+        type: string
+      claimed_by:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      env:
+        type: string
+      external_ref:
+        type: string
+      id:
+        type: string
+      job_id:
+        type: string
+      job_type:
+        type: string
+      kind:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentKind'
+      last_error:
+        type: string
+      lease_expires_at:
+        type: string
+      manifest_id:
+        type: string
+      manifest_name:
+        type: string
+      message:
+        type: string
+      repo_url:
+        type: string
+      resource_id:
+        type: string
+      resource_type:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentStatus'
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.IntentKind:
+    enum:
+    - build
+    - release
+    type: string
+    x-enum-varnames:
+    - IntentKindBuild
+    - IntentKindRelease
+  github_com_bsonger_devflow-release-service_pkg_model.IntentStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    type: string
+    x-enum-varnames:
+    - IntentPending
+    - IntentRunning
+    - IntentSucceeded
+    - IntentFailed
+  github_com_bsonger_devflow-release-service_pkg_model.Internet:
+    enum:
+    - internal
+    - external
+    type: string
+    x-enum-varnames:
+    - Internal
+    - External
+  github_com_bsonger_devflow-release-service_pkg_model.Job:
+    properties:
+      application_id:
+        type: string
+      application_name:
+        type: string
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      env:
+        type: string
+      execution_intent_id:
+        type: string
+      id:
+        type: string
+      manifest_id:
+        type: string
+      manifest_name:
+        type: string
+      project_name:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStatus'
+      steps:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStep'
+        type: array
+      type:
+        type: string
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.JobStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    - RollingBack
+    - RolledBack
+    - Syncing
+    - SyncFailed
+    type: string
+    x-enum-varnames:
+    - JobPending
+    - JobRunning
+    - JobSucceeded
+    - JobFailed
+    - JobRollingBack
+    - JobRolledBack
+    - JobSyncing
+    - JobSyncFailed
+  github_com_bsonger_devflow-release-service_pkg_model.JobStep:
+    properties:
+      end_time:
+        type: string
+      message:
+        type: string
+      name:
+        type: string
+      progress:
+        type: integer
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus'
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Manifest:
+    properties:
+      application_id:
+        type: string
+      application_name:
+        type: string
+      branch:
+        type: string
+      commit_hash:
+        type: string
+      config_maps:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ConfigMap'
+        type: array
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      digest:
+        type: string
+      envs:
+        additionalProperties:
+          items:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.EnvVar'
+          type: array
+        type: object
+      execution_intent_id:
+        type: string
+      git_repo:
+        type: string
+      id:
+        type: string
+      internet:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Internet'
+      name:
+        type: string
+      pipeline_id:
+        type: string
+      replica:
+        type: integer
+      service:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Service'
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus'
+      steps:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStep'
+        type: array
+      type:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseType'
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    type: string
+    x-enum-varnames:
+    - ManifestPending
+    - ManifestRunning
+    - ManifestSucceeded
+    - ManifestFailed
+  github_com_bsonger_devflow-release-service_pkg_model.ManifestStep:
+    properties:
+      end_time:
+        type: string
+      message:
+        type: string
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus'
+      task_name:
+        type: string
+      task_run:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.PatchManifestRequest:
+    properties:
+      commit_hash:
+        type: string
+      digest:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Port:
+    properties:
+      name:
+        type: string
+      port:
+        type: integer
+      target_port:
+        type: integer
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Project:
+    properties:
+      created_at:
+        type: string
+      deleted_at:
+        type: string
+      description:
+        type: string
+      id:
+        type: string
+      key:
+        type: string
+      labels:
+        additionalProperties:
+          type: string
+        type: object
+      name:
+        type: string
+      namespace:
+        type: string
+      owner:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ProjectStatus'
+      updated_at:
+        type: string
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.ProjectStatus:
+    enum:
+    - active
+    - archived
+    type: string
+    x-enum-varnames:
+    - ProjectActive
+    - ProjectArchived
+  github_com_bsonger_devflow-release-service_pkg_model.ReleaseType:
+    enum:
+    - normal
+    - canary
+    - blue-green
+    type: string
+    x-enum-varnames:
+    - Normal
+    - Canary
+    - BlueGreen
+  github_com_bsonger_devflow-release-service_pkg_model.Service:
+    properties:
+      ports:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Port'
+        type: array
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.StepStatus:
+    enum:
+    - Pending
+    - Running
+    - Succeeded
+    - Failed
+    type: string
+    x-enum-varnames:
+    - StepPending
+    - StepRunning
+    - StepSucceeded
+    - StepFailed
+  pkg_api.CreateResponse:
+    properties:
+      execution_intent_id:
+        type: string
+      id:
+        type: string
+    type: object
+  pkg_api.UpdateActiveManifestRequest:
+    properties:
+      manifest_id:
+        type: string
+    required:
+    - manifest_id
+    type: object
+  pkg_api.VerifyBuildStatusRequest:
+    properties:
+      external_ref:
+        type: string
+      intent_id:
+        type: string
+      manifest_id:
+        type: string
+      message:
+        type: string
+      pipeline_id:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ManifestStatus'
+    required:
+    - manifest_id
+    - status
+    type: object
+  pkg_api.VerifyBuildStepRequest:
+    properties:
+      end_time:
+        type: string
+      manifest_id:
+        type: string
+      message:
+        type: string
+      pipeline_id:
+        type: string
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus'
+      task_name:
+        type: string
+      task_run:
+        type: string
+    required:
+    - manifest_id
+    - status
+    - task_name
+    type: object
+  pkg_api.VerifyReleaseStatusRequest:
+    properties:
+      external_ref:
+        type: string
+      intent_id:
+        type: string
+      job_id:
+        type: string
+      message:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.JobStatus'
+    required:
+    - job_id
+    - status
+    type: object
+  pkg_api.VerifyReleaseStepRequest:
+    properties:
+      end_time:
+        type: string
+      job_id:
+        type: string
+      message:
+        type: string
+      progress:
+        type: integer
+      start_time:
+        type: string
+      status:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus'
+      step_name:
+        type: string
+    required:
+    - job_id
+    - status
+    - step_name
+    type: object
+info:
+  contact: {}
+paths:
+  /api/v1/applications:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application'
+            type: array
+      summary: 获取应用列表
+      tags:
+      - Application
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的应用
+      parameters:
+      - description: Application Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.CreateResponse'
+      summary: 创建应用
+      tags:
+      - Application
+  /api/v1/applications/{id}:
+    delete:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 删除应用
+      tags:
+      - Application
+    get:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application'
+      summary: 获取应用
+      tags:
+      - Application
+    put:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Application Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新应用
+      tags:
+      - Application
+  /api/v1/applications/{id}/active_manifest:
+    patch:
+      parameters:
+      - description: Application ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Active Manifest Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_api.UpdateActiveManifestRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新应用的 Active Manifest
+      tags:
+      - Application
+  /api/v1/configurations:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration'
+            type: array
+      summary: 获取配置列表
+      tags:
+      - Configuration
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的配置
+      parameters:
+      - description: Configuration Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.CreateResponse'
+      summary: 创建配置
+      tags:
+      - Configuration
+  /api/v1/configurations/{id}:
+    delete:
+      parameters:
+      - description: Configuration ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 删除配置
+      tags:
+      - Configuration
+    get:
+      parameters:
+      - description: Configuration ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration'
+      summary: 获取配置
+      tags:
+      - Configuration
+    put:
+      parameters:
+      - description: Configuration ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Configuration Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Configuration'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新配置
+      tags:
+      - Configuration
+  /api/v1/intents:
+    get:
+      description: 按 kind、status、resource、application 等维度查询 execution intents
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取执行意图列表
+      tags:
+      - Intent
+  /api/v1/intents/{id}:
+    get:
+      parameters:
+      - description: Intent ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 获取执行意图
+      tags:
+      - Intent
+  /api/v1/jobs:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job'
+            type: array
+      summary: 获取Job列表
+      tags:
+      - Job
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的Job
+      parameters:
+      - description: Job Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.CreateResponse'
+      summary: 创建Job
+      tags:
+      - Job
+  /api/v1/jobs/{id}:
+    delete:
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 删除Job
+      tags:
+      - Job
+    get:
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job'
+      summary: 获取Job
+      tags:
+      - Job
+    put:
+      parameters:
+      - description: Job ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Job Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Job'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新Job
+      tags:
+      - Job
+  /api/v1/manifests:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest'
+            type: array
+      summary: 获取应用列表
+      tags:
+      - Manifest
+    post:
+      consumes:
+      - application/json
+      description: 根据 Manifest 创建 Manifest，自动生成名称
+      parameters:
+      - description: Manifest 数据（branch 必填）
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.CreateResponse'
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 创建 Manifest
+      tags:
+      - Manifest
+  /api/v1/manifests/{id}:
+    get:
+      parameters:
+      - description: Manifest ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Manifest'
+      summary: 获取应用
+      tags:
+      - Manifest
+    patch:
+      consumes:
+      - application/json
+      description: 部分更新 Manifest（仅支持 digest / commit_hash）
+      parameters:
+      - description: Manifest ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Patch 数据
+        in: body
+        name: data
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.PatchManifestRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Patch Manifest
+      tags:
+      - Manifest
+  /api/v1/projects:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project'
+            type: array
+      summary: 获取项目列表
+      tags:
+      - Project
+    post:
+      consumes:
+      - application/json
+      description: 创建一个新的项目
+      parameters:
+      - description: Project Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.CreateResponse'
+      summary: 创建项目
+      tags:
+      - Project
+  /api/v1/projects/{id}:
+    delete:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 删除项目
+      tags:
+      - Project
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project'
+      summary: 获取项目
+      tags:
+      - Project
+    put:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      - description: Project Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Project'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 更新项目
+      tags:
+      - Project
+  /api/v1/projects/{id}/applications:
+    get:
+      parameters:
+      - description: Project ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Application'
+            type: array
+      summary: 获取项目下的应用列表
+      tags:
+      - Project
+  /api/v1/verify/argo/events:
+    post:
+      consumes:
+      - application/json
+      description: 由 Argo 或外部发布观察器回写 Job 级状态
+      parameters:
+      - description: Release Status Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_api.VerifyReleaseStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 回写发布状态
+      tags:
+      - Verify
+  /api/v1/verify/healthz:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Verify Service 健康检查
+      tags:
+      - Verify
+  /api/v1/verify/release/steps:
+    post:
+      consumes:
+      - application/json
+      description: 由 Argo Application / Deployment / Rollout 观察器回写 Job steps
+      parameters:
+      - description: Release Step Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_api.VerifyReleaseStepRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 回写发布步骤
+      tags:
+      - Verify
+  /api/v1/verify/tekton/events:
+    post:
+      consumes:
+      - application/json
+      description: 由 Tekton 或外部构建观察器回写 Manifest 级状态
+      parameters:
+      - description: Build Status Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_api.VerifyBuildStatusRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 回写构建状态
+      tags:
+      - Verify
+  /api/v1/verify/tekton/steps:
+    post:
+      consumes:
+      - application/json
+      description: 由 Tekton TaskRun 观察器回写 Manifest steps
+      parameters:
+      - description: Build Step Data
+        in: body
+        name: data
+        required: true
+        schema:
+          $ref: '#/definitions/pkg_api.VerifyBuildStepRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: 回写构建步骤
+      tags:
+      - Verify
+swagger: "2.0"

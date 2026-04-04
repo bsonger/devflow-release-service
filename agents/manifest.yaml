@@ -1,0 +1,67 @@
+version: 1
+name: devflow-agent-control-plane
+mode: three-role-harness
+canonical_root: agents
+
+startup:
+  read_order:
+    - AGENTS.md
+    - agents/README.md
+    - agents/manifest.yaml
+    - agents/protocols/startup.md
+    - agents/roles/planner.md
+    - agents/roles/generator.md
+    - agents/roles/evaluator.md
+    - agents/reference/worker-constraints.md
+    - agents/reference/evaluator-rubric.md
+    - agents/reference/observability.md
+  run_initializer: scripts/init_harness_run.sh
+  default_roles:
+    - planner
+    - generator
+    - evaluator
+
+directories:
+  roles: agents/roles
+  protocols: agents/protocols
+  reference: agents/reference
+  patterns: agents/patterns
+  templates: agents/templates
+  runs: agents/runs
+  decisions: agents/decisions
+  examples: agents/examples
+
+artifacts:
+  request: request.md
+  product_spec: product-spec.md
+  sprint_contract: sprint-01-contract.md
+  evaluator_report: evaluator-report.md
+  handoff: handoff.md
+
+quality_gates:
+  evaluator_outcomes:
+    - Pass
+    - Pass with risks
+    - Fail
+  fail_behavior: generate_next_contract
+  no_bypass:
+    - no_spec_no_implementation
+    - no_evaluator_report_no_completion
+    - no_unverified_claims
+
+validation:
+  standard_doc_template: agents/templates/standard-doc.md
+  structure_checker: scripts/check_agents.sh
+
+special_rules:
+  require_full_harness_for:
+    - application
+    - manifest
+    - job
+    - intent
+    - release-service
+    - verify-service
+    - controller
+    - worker
+  require_swagger_judgement: true
+  require_observability_review: true

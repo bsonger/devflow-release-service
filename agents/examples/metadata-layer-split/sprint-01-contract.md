@@ -1,0 +1,50 @@
+# Sprint 01 Contract：先定义边界，不先拆代码
+
+- Sprint：
+  - 01
+- 来源 spec：
+  - `agents/examples/metadata-layer-split/product-spec.md`
+- 本轮目标：
+  - 把元数据层与执行器的职责边界写清楚。
+  - 明确当前仓库中哪些文件属于“未来应迁出”的执行逻辑。
+  - 为后续代码重构确定最小切片顺序。
+- 非目标：
+  - 不直接改动 `pkg/service` 业务逻辑。
+  - 不引入消息队列实现。
+  - 不新增新的运行进程。
+- 允许修改文件：
+  - `agents/codex.md`
+  - `agents/decisions/005-metadata-layer-split.md`
+  - `agents/examples/metadata-layer-split/*`
+  - 如有必要，相关 `agents/reference/*.md`
+- Worker 约束：
+  - 只定义边界和迁移顺序，不顺手改代码实现。
+  - 不把“未来建议迁出”写成“当前已经迁出”。
+  - 不用更大规模重构替代本轮边界定义。
+- 预期行为 / 验收标准：
+  - 功能正确：
+    - 文档明确 `devflow` 是元数据层，而不是 Tekton / Argo 的直接执行器。
+    - 文档明确 `ManifestService` 和 `JobService` 中哪些职责未来迁出。
+  - 资源一致：
+    - `Application`、`Manifest`、`Job` 仍是统一元数据模型，不被拆散到多个读模型。
+  - 错误语义：
+    - 区分“metadata accepted”与“execution succeeded”。
+  - 日志 / 可观测性：
+    - 保持 trace / job ID / pipeline ID 可跨服务关联。
+  - 文档 / Swagger 同步：
+    - 本轮不涉及 Swagger 生成。
+- Evaluator Rubric：
+  - `Pass`：边界、保留职责、迁出职责、迁移顺序都已写清，且不与当前代码事实冲突。
+  - `Pass with risks`：主体边界已清楚，但事件回写或协议部分仍有明确未知项。
+  - `Fail`：如果文档仍无法回答“谁负责执行、谁负责状态真相、谁负责回写”，则失败。
+- 验证方法：
+  - 对照 `pkg/service/manifest.go`、`pkg/service/job.go`、`pkg/service/argo.go`、`pkg/config/config.go` 确认耦合点。
+  - 对照现有 `agents/reference/*.md` 与 ADR 001，确保状态来源仍以外部系统为准。
+  - 通过示例 handoff 固定下一轮最小切片。
+- 失败门槛：
+  - 若文档仍无法回答“什么必须留在 metadata API，什么必须迁出”，本 sprint 失败。
+  - 若文档把状态查询与执行逻辑混成一个责任，本 sprint 失败。
+- 交付物：
+  - 元数据层 ADR
+  - 一组已填好的拆分示例工件
+  - 下一轮的最小迁移建议
