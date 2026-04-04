@@ -1,31 +1,56 @@
 # Devflow Release Service
 
-`devflow-release-service` 只负责 `Manifest`、`Release`、`Intent`。
+`devflow-release-service` is the backend owner for `Manifest`, `Release`, and `Intent`.
 
-边界：
+## Backend Role
 
-- 对外 HTTP 资源只有 `manifests`、`releases`、`intents`
-- 不提供 `Project`、`Application`、`Configuration`、`Verify` 的 API、router 或 Swagger
-- 启动骨架、通用中间件、分页/响应、观测基础设施优先复用 `../devflow-service-common`
+- own build/release control-plane resources
+- receive build/release control commands
+- persist control-plane lifecycle records
+- trigger execution-side resources through adapters
 
-仓库文档：
+## Backend Architecture
 
-- [架构](docs/architecture.md)
-- [接口规范](docs/api-spec.md)
-- [约束](docs/constraints.md)
-- [观测规范](docs/observability.md)
-- [Harness](docs/harness.md)
-- [资源说明](docs/resources/README.md)
+This repo uses a **layered control-plane backend** with separable command/query paths:
 
-运行约定：
+```text
+cmd
+ -> config
+ -> router
+ -> api
+ -> service
+    -> store
+    -> runtime / external adapters
+ -> model
+```
 
-- 任何调用其他服务或外部系统的代码都必须同时产出 `metrics + trace + structured log`
-- 默认 harness 为 `Planner -> Generator -> Evaluator`
-- 运行时支持 delegation 时，必须真实启动对应 sub-agent，不允许只在单 agent 内口头模拟
+### Package responsibilities
 
-常用命令：
+- `cmd/`: service startup
+- `pkg/config`: config loading and runtime init
+- `pkg/router`: Gin router and middleware wiring
+- `pkg/api`: manifest/release/intent handlers
+- `pkg/service`: lifecycle rules, command/query behavior, adapter coordination
+- `pkg/runtime`: execution-mode and runtime wiring
+- `pkg/model`: control-plane models
+
+## Non-Goals
+
+- no `Project` ownership
+- no `Application` ownership
+- no `Configuration` ownership
+- no verify ingress ownership
+- no platform dashboard ownership
+
+## Key Docs
+
+- `docs/architecture.md`
+- `docs/api-spec.md`
+- `docs/constraints.md`
+- `docs/resources/README.md`
+
+## Local Run
 
 - `go run ./cmd`
 - `go build ./cmd/main.go`
 - `go test ./...`
-- `swag init -g cmd/main.go --parseDependency`

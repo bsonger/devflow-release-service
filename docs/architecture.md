@@ -2,32 +2,82 @@
 
 ## Purpose
 
-`devflow-release-service` 负责 release 控制面，只管理 `Manifest`、`Release`、`Intent`。
+`devflow-release-service` is the control-plane owner for `Manifest`, `Release`, and `Intent`.
+It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
 
-## Inbound Surface
+## Architecture Style
 
-- `GET/POST /api/v1/manifests`
-- `GET /api/v1/manifests/:id`
-- `PATCH /api/v1/manifests/:id`
-- `GET/POST /api/v1/releases`
-- `GET /api/v1/releases/:id`
-- `GET /api/v1/intents`
-- `GET /api/v1/intents/:id`
+This repo uses a **layered control-plane backend**:
 
-## Data And Dependencies
+```text
+router -> api -> service -> store
+                    \-> runtime / external adapters
+                    \-> model
+```
 
-- 主存储：MongoDB
-- 主要集合：`manifests`、`release`、`execution_intents`
-- `release` 集合作为 `Release` 的历史存储名暂时保留，避免本次顺手引入数据迁移
-- 运行时可能接入 Tekton、Argo CD、意图执行链路
-- 启动、路由、HTTP 公共件、观测基础设施优先来自 `devflow-service-common`
+The service layer is the domain center:
+- lifecycle defaults
+- build/release command rules
+- public control-plane state semantics
+- coordination with Tekton / Argo / Kubernetes adapters
 
-## Outbound Rules
+## Request Flow
 
-- 任何调用 Tekton、Argo CD 或其他外部系统的代码都必须同时产生 `metrics + trace + structured log`
+### Command path
+
+```text
+Client
+  -> manifest/release handler
+  -> release service logic
+  -> Mongo persistence
+  -> runtime / external adapter dispatch
+  -> HTTP response
+```
+
+### Query path
+
+```text
+Client
+  -> manifest/release/intent handler
+  -> release query logic
+  -> Mongo store
+  -> HTTP response
+```
+
+## Internal Package Layout
+
+- `cmd/main.go`
+  - process entrypoint only
+- `pkg/config`
+  - config loading
+  - runtime initialization
+- `pkg/router`
+  - route registration
+  - module wiring
+- `pkg/api`
+  - manifest/release/intent handlers
+- `pkg/service`
+  - lifecycle rules
+  - command/query logic
+  - adapter coordination
+- `pkg/runtime`
+  - execution-mode switching
+- `pkg/model`
+  - `Manifest`, `Release`, `Intent`, related nested types
+- `pkg/store`
+  - persistence primitives
+
+## External Dependencies
+
+- `Gin`
+- `MongoDB`
+- `devflow-service-common`
+- Tekton-related clients / resources
+- Argo CD / Kubernetes adapters
 
 ## Non-Goals
 
-- 不负责 `Project`、`Application` 元数据 CRUD
-- 不负责 `Configuration`
-- 不负责 verify webhook / writeback 入站
+- `Project` / `Application` metadata ownership
+- `Configuration` ownership
+- verify webhook / writeback ingress
+- platform UI aggregation ownership
