@@ -1,45 +1,49 @@
-# Release Service
+# Release Service Platform Notes
 
-职责：
+## Purpose
 
-- 提供 `Manifest` 的查询、创建、patch
-- 提供 `Release` 的查询、创建
-- 提供 `Intent` 的查询
-- 负责 release/build 控制面资源和后续执行编排衔接
+This file is the repo-local runtime note for `devflow-release-service`.
+For public API shape, ownership, and resource details, prefer:
+- `../README.md`
+- `../docs/`
+- `../docs/resources/`
 
-当前实现：
+## Runtime entrypoints
 
-- `cmd/main.go` 通过 `devflow-service-common/bootstrap` 启动
-- `pkg/api/manifest.go`
-- `pkg/api/release.go`
-- `pkg/api/intent.go`
-- `pkg/service/manifest.go`
-- `pkg/service/release.go`
-- `pkg/service/intent.go`
-- `pkg/router/manifest.go`
-- `pkg/router/release.go`
-- `pkg/router/intent.go`
+- process entry: `cmd/main.go`
+- shared bootstrap: `../devflow-service-common/bootstrap`
+- router root: `pkg/router/router.go`
 
-建议端口：
+## Main local code paths
 
-- `RELEASE_SERVICE_PORT`
-- `RELEASE_SERVICE_METRICS_PORT`
-- `RELEASE_SERVICE_PPROF_PORT`
+- manifest routes / handlers / logic:
+  - `pkg/router/manifest.go`
+  - `pkg/api/manifest.go`
+  - `pkg/service/manifest.go`
+- release routes / handlers / logic:
+  - `pkg/router/release.go`
+  - `pkg/api/release.go`
+  - `pkg/service/release.go`
+- intent routes / handlers / logic:
+  - `pkg/router/intent.go`
+  - `pkg/api/intent.go`
+  - `pkg/service/intent.go`
 
-运行时：
+## Execution-side integration points
 
-- 上报的 OTel `service.name` 为 `release-service`
-- 任何 outbound service / external call 都必须带 `metrics + trace + structured log`
-- 默认 harness 为 `Planner -> Generator -> Evaluator`，并且支持 delegation 时必须真实启动 sub-agents
+- Tekton build dispatch is triggered from `pkg/service/manifest.go`
+- Argo / Kubernetes Application sync is triggered from `pkg/service/release.go`
 
-接口：
+## Platform dependencies
 
-- `GET /api/v1/manifests`
-- `POST /api/v1/manifests`
-- `GET /api/v1/manifests/:id`
-- `PATCH /api/v1/manifests/:id`
-- `GET /api/v1/releases`
-- `POST /api/v1/releases`
-- `GET /api/v1/releases/:id`
-- `GET /api/v1/intents`
-- `GET /api/v1/intents/:id`
+- shared response / pagination: `devflow-service-common/httpx`
+- shared middleware: `devflow-service-common/routercore`
+- shared observability: `devflow-service-common/observability`
+
+## Service identity
+
+- OTel `service.name`: `release-service`
+- typical ports:
+  - `RELEASE_SERVICE_PORT`
+  - `RELEASE_SERVICE_METRICS_PORT`
+  - `RELEASE_SERVICE_PPROF_PORT`
