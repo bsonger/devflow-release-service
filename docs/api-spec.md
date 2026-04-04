@@ -1,33 +1,51 @@
 # API Spec
 
-## Resources
+## Purpose
 
+`devflow-release-service` exposes public HTTP APIs for the release control-plane resources:
 - `Manifest`
-  - `GET /api/v1/manifests`
-  - `POST /api/v1/manifests`
-  - `GET /api/v1/manifests/:id`
-  - `PATCH /api/v1/manifests/:id`
 - `Release`
-  - `GET /api/v1/releases`
-  - `POST /api/v1/releases`
-    - platform-relevant request fields: `manifest_id`, `configuration_id` (optional), `env` (optional, default `prod`), `type`
-  - `GET /api/v1/releases/:id`
 - `Intent`
-  - `GET /api/v1/intents`
-  - `GET /api/v1/intents/:id`
+
+## Endpoint Groups
+
+### `Manifest`
+- `GET /api/v1/manifests`
+- `POST /api/v1/manifests`
+- `GET /api/v1/manifests/:id`
+- `PATCH /api/v1/manifests/:id`
+
+### `Release`
+- `GET /api/v1/releases`
+- `POST /api/v1/releases`
+- `GET /api/v1/releases/:id`
+
+### `Intent`
+- `GET /api/v1/intents`
+- `GET /api/v1/intents/:id`
+
+## Request Rules
+
+- `POST /api/v1/releases` may accept platform-relevant fields: `manifest_id`, `configuration_id` (optional), `env` (optional, default `prod`), `type`
+- `PATCH /api/v1/manifests/:id` only supports repo-defined patch fields such as `commit_hash` and `digest`
+- list endpoints use the common pagination parameters and filtering conventions in this repo
 
 ## Response Rules
 
-- 创建接口返回统一创建响应
-- 列表接口遵循统一分页参数和分页响应头
-- `Intent` 为控制面查询资源，不在本仓库对外提供通用更新 CRUD
+- create endpoints return the common create-response shape
+- list endpoints return common pagination headers
+- `Intent` is a control-plane query resource and does not expose a general public update CRUD surface
 
 ## Error Rules
 
-- 非法 ObjectID 返回 `400`
-- 资源不存在返回 `404`
-- 存储层或执行层未分类错误返回 `500`
+- invalid ObjectID -> `400`
+- resource not found -> `404`
+- storage/execution uncategorized internal error -> `500`
 
-## Swagger
+## Non-Goals
 
-Swagger 必须只包含 `Manifest`、`Release`、`Intent` 接口。
+This repo does not expose public CRUD for:
+- `Project`
+- `Application`
+- `Configuration`
+- verify ingress
