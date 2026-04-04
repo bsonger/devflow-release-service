@@ -10,6 +10,7 @@
 - `Release`
   - `GET /api/v1/releases`
   - `POST /api/v1/releases`
+    - platform-relevant request fields: `manifest_id`, `configuration_id` (optional), `env` (optional, default `prod`), `type`
   - `GET /api/v1/releases/:id`
 - `Intent`
   - `GET /api/v1/intents`

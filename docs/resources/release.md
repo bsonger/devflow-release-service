@@ -30,8 +30,9 @@
 | `project_name` | `string` | system-derived | system | 项目名/命名空间上下文 |
 | `manifest_id` | `ObjectID` | required in practice | user | 发布基于哪个 manifest |
 | `manifest_name` | `string` | system-derived | system | manifest 名 |
+| `configuration_id` | `*ObjectID` | optional | user/system | 关联的 Configuration ID |
 | `type` | `string` | optional | user/system | 发布动作；为空默认 `Upgrade` |
-| `env` | `string` | system-derived | system | 当前实现固定写入 `prod` |
+| `env` | `string` | optional | user/system | 目标环境；为空默认 `prod` |
 | `status` | `ReleaseStatus` | system-defaulted | verify/system | 发布状态 |
 | `steps` | `[]ReleaseStep` | optional | verify/system | 发布步骤集合 |
 
@@ -82,7 +83,7 @@
   - `type` 为空时默认 `Upgrade`
   - `manifest_name`、`application_id` 来自 `Manifest`
   - `application_name`、`project_name` 来自 `Application`
-  - `env` 当前默认 `prod`
+  - `env` 为空时默认 `prod`
   - `status` 初始化为 `Pending`
   - `steps` 可自动生成
 - side effects:

@@ -33,6 +33,7 @@ type Release struct {
 	BaseModel `bson:",inline"`
 
 	ExecutionIntentID *primitive.ObjectID `bson:"execution_intent_id,omitempty" json:"execution_intent_id,omitempty"`
+	ConfigurationID   *primitive.ObjectID `bson:"configuration_id,omitempty" json:"configuration_id,omitempty"`
 	ApplicationId     primitive.ObjectID  `bson:"application_id" json:"application_id"`
 	ApplicationName   string              `bson:"application_name" json:"application_name"`
 	ProjectName       string              `bson:"project_name" json:"project_name"`

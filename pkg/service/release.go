@@ -23,6 +23,23 @@ var ReleaseService = &releaseService{}
 
 type releaseService struct{}
 
+func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, app *model.Application) {
+	release.ManifestName = manifest.Name
+	release.ApplicationId = manifest.ApplicationId
+	if release.Type == "" {
+		release.Type = model.ReleaseUpgrade
+	}
+	release.ApplicationName = app.Name
+	release.ProjectName = app.ProjectName
+	if release.Env == "" {
+		release.Env = "prod"
+	}
+	release.Status = model.ReleasePending
+	if len(release.Steps) == 0 {
+		release.Steps = model.DefaultReleaseSteps(app.Type, release.Type)
+	}
+}
+
 func (s *releaseService) Create(ctx context.Context, release *model.Release) (primitive.ObjectID, error) {
 	log := logging.LoggerWithContext(ctx).With(
 		zap.String("release.type", release.Type),
@@ -37,13 +54,6 @@ func (s *releaseService) Create(ctx context.Context, release *model.Release) (pr
 		return primitive.NilObjectID, err
 	}
 
-	release.ManifestName = manifest.Name
-	release.ApplicationId = manifest.ApplicationId
-
-	if release.Type == "" {
-		release.Type = model.ReleaseUpgrade
-	}
-
 	app, err := ApplicationService.Get(ctx, manifest.ApplicationId)
 	if err != nil {
 		log.Error("get application failed",
@@ -53,14 +63,7 @@ func (s *releaseService) Create(ctx context.Context, release *model.Release) (pr
 		return primitive.NilObjectID, err
 	}
 
-	release.ApplicationName = app.Name
-	release.ProjectName = app.ProjectName
-	release.Env = "prod"
-
-	release.Status = model.ReleasePending
-	if len(release.Steps) == 0 {
-		release.Steps = model.DefaultReleaseSteps(app.Type, release.Type)
-	}
+	populateReleaseDefaults(release, manifest, app)
 	release.WithCreateDefault()
 
 	if err := mongo.Repo.Create(ctx, release); err != nil {
