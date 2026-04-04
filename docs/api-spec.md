@@ -42,10 +42,6 @@
 - resource not found -> `404`
 - storage/execution uncategorized internal error -> `500`
 
-## Non-Goals
+## Boundary Note
 
-This repo does not expose public CRUD for:
-- `Project`
-- `Application`
-- `Configuration`
-- verify ingress
+For repo scope and non-goals, see `docs/architecture.md`.
