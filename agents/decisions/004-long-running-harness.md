@@ -3,7 +3,7 @@
 - 决策：复杂任务采用 `Planner -> Generator -> Evaluator` 三段式，并通过文件工件传递上下文；简单任务仍优先单回合直接完成。
 - 原因：
   - Devflow 变更常跨 `pkg/api`、`pkg/service`、`pkg/router` 与 `agents/` 文档，长对话容易丢失资源关系与状态流上下文。
-  - `Application`、`Manifest`、`Job` 存在串联状态，自评容易漏掉跨资源回归。
+  - `Application`、`Manifest`、`Release` 存在串联状态，自评容易漏掉跨资源回归。
   - 项目依赖 Argo CD、Tekton、Mongo、OTel，很多正确性必须靠明确验收，而不是主观判断。
 - 影响：
   - 项目启动时默认先进入 `Planner -> Generator -> Evaluator` 角色模型。

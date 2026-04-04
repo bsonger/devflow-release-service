@@ -17,8 +17,8 @@
 ## Data And Dependencies
 
 - 主存储：MongoDB
-- 主要集合：`manifests`、`job`、`execution_intents`
-- `job` 集合作为 `Release` 的历史存储名暂时保留，避免本次顺手引入数据迁移
+- 主要集合：`manifests`、`release`、`execution_intents`
+- `release` 集合作为 `Release` 的历史存储名暂时保留，避免本次顺手引入数据迁移
 - 运行时可能接入 Tekton、Argo CD、意图执行链路
 - 启动、路由、HTTP 公共件、观测基础设施优先来自 `devflow-service-common`
 

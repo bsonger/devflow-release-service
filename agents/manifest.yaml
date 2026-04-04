@@ -57,7 +57,7 @@ validation:
 special_rules:
   require_full_harness_for:
     - manifest
-    - job
+    - release
     - intent
     - release-service
   require_swagger_judgement: true

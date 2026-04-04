@@ -11,13 +11,13 @@
 
 - `cmd/main.go` 通过 `devflow-service-common/bootstrap` 启动
 - `pkg/api/manifest.go`
-- `pkg/api/job.go`
+- `pkg/api/release.go`
 - `pkg/api/intent.go`
 - `pkg/service/manifest.go`
-- `pkg/service/job.go`
+- `pkg/service/release.go`
 - `pkg/service/intent.go`
 - `pkg/router/manifest.go`
-- `pkg/router/job.go`
+- `pkg/router/release.go`
 - `pkg/router/intent.go`
 
 建议端口：

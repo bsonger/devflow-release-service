@@ -6,7 +6,7 @@
 - 影响资源：
   - `Application`
   - `Manifest`
-  - `Job`
+  - `Release`
   - `Configuration`
 - 影响模块：
   - `pkg/api`

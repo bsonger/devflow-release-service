@@ -93,6 +93,6 @@
 
 ## 当前仓库的特殊要求
 
-- 只要任务涉及 `Application` / `Manifest` / `Job` / `Intent` 之一，就优先进入完整 3 角色模式
+- 只要任务涉及 `Application` / `Manifest` / `Release` / `Intent` 之一，就优先进入完整 3 角色模式
 - 只要任务涉及 `release-service` / `verify-service` / `controller` / `worker`，Evaluator 必查 observability
 - 只要任务涉及 API 行为变化，必须判断 Swagger 是否需要同步

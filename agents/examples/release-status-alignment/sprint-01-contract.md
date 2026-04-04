@@ -1,11 +1,11 @@
-# Sprint 01 Contract：收敛 Job 创建链路语义
+# Sprint 01 Contract：收敛 Release 创建链路语义
 
 - Sprint：
   - 01
 - 来源 spec：
-  - `agents/examples/job-status-alignment/product-spec.md`
+  - `agents/examples/release-status-alignment/product-spec.md`
 - 本轮目标：
-  - 先把 `Job.Create` 创建链路的状态语义写清楚，并沉淀到仓库文档中。
+  - 先把 `Release.Create` 创建链路的状态语义写清楚，并沉淀到仓库文档中。
   - 给后续代码改造建立统一验收语言。
 - 非目标：
   - 不实现外部事件消费。
@@ -13,12 +13,12 @@
   - 不新增 API。
   - 不修改业务代码。
 - 允许修改文件：
-  - `agents/reference/job.md`
+  - `agents/reference/release.md`
   - `agents/patterns/status-flow.md`
-  - `agents/examples/job-status-alignment/*`
+  - `agents/examples/release-status-alignment/*`
   - `agents/README.md`
 - Worker 约束：
-  - 只收敛 Job 创建链路语义，不扩散到 Tekton / Manifest / controller 实现。
+  - 只收敛 Release 创建链路语义，不扩散到 Tekton / Manifest / controller 实现。
   - 不把“本地已发起同步”写成“外部执行成功”。
   - 不用新增状态枚举来绕过当前语义问题。
 - 预期行为 / 验收标准：
@@ -26,7 +26,7 @@
     - 文档明确 `Pending -> Syncing -> SyncFailed` 属于本地创建链路可观察状态。
     - 文档明确 `Running` / `Succeeded` / `Failed` / `RolledBack` 优先由外部事件驱动。
   - 资源一致：
-    - `Job`、`Application`、`Manifest` 的关系描述不与现有参考文档冲突。
+    - `Release`、`Application`、`Manifest` 的关系描述不与现有参考文档冲突。
   - 错误语义：
     - 明确区分“本地发起同步失败”和“外部执行失败”。
   - 日志 / 可观测性：
@@ -34,17 +34,17 @@
   - 文档 / Swagger 同步：
     - 本轮不涉及 Swagger 生成。
 - Evaluator Rubric：
-  - `Pass`：能明确回答“Job 创建成功代表什么”，且不混淆本地同步和发布终态。
+  - `Pass`：能明确回答“Release 创建成功代表什么”，且不混淆本地同步和发布终态。
   - `Pass with risks`：主体语义已清楚，但终态回写链路仍依赖仓库外事实。
   - `Fail`：若文档仍把创建成功写成发布成功，或无法区分 `SyncFailed` 与外部执行失败。
 - 验证方法：
-  - 检查 `pkg/api/job.go` 与 `pkg/service/job.go` 的当前实现是否能被文档覆盖。
-  - 检查 `agents/reference/job.md`、`agents/patterns/status-flow.md` 与 ADR 001 是否一致。
+  - 检查 `pkg/api/release.go` 与 `pkg/service/release.go` 的当前实现是否能被文档覆盖。
+  - 检查 `agents/reference/release.md`、`agents/patterns/status-flow.md` 与 ADR 001 是否一致。
   - 运行 `go test ./...` 了解仓库基线；若失败，记录失败原因而不臆造通过。
 - 失败门槛：
-  - 若文档仍无法回答“Job 创建成功究竟代表什么”，本 sprint 失败。
+  - 若文档仍无法回答“Release 创建成功究竟代表什么”，本 sprint 失败。
   - 若文档把本地同步请求成功写成发布成功，本 sprint 失败。
 - 交付物：
   - 一组已填好的示例工件
-  - 收紧后的 Job / 状态流参考文档
+  - 收紧后的 Release / 状态流参考文档
   - handoff

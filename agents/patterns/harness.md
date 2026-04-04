@@ -16,7 +16,7 @@
 - 优先按资源拆：
   - `Application`
   - `Manifest`
-  - `Job`
+  - `Release`
   - `Configuration`
 - 其次按状态流拆：
   - 创建
@@ -37,7 +37,7 @@
 - 把 `done` 写成可检查行为：
   - HTTP 状态码与响应体
   - Mongo 字段变化
-  - `Application` / `Manifest` / `Job` 状态值
+  - `Application` / `Manifest` / `Release` 状态值
   - 日志关键点
   - Swagger 是否需要同步
 - 明确验证方法：
@@ -69,5 +69,5 @@
 
 - Sprint A：`Application.UpdateActiveManifest` 的校验与错误语义。
 - Sprint B：`Manifest.Patch` 的字段边界与 Swagger 同步。
-- Sprint C：`Job.Create -> syncArgo -> status` 链路的一致性。
+- Sprint C：`Release.Create -> syncArgo -> status` 链路的一致性。
 - Sprint D：Tekton / Argo 事件回写的状态来源说明。

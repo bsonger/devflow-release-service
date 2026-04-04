@@ -16,15 +16,15 @@
 - 验证记录：
   - 已对照当前代码确认耦合点：
     - `pkg/service/manifest.go` 直接操作 Tekton
-    - `pkg/service/job.go` 直接操作 Argo
+    - `pkg/service/release.go` 直接操作 Argo
     - `pkg/service/argo.go` 持有事件处理雏形
     - `pkg/config/config.go` 启动时初始化 Mongo、Tekton、Argo
 - 未解决风险：
   - 事件回写协议尚未标准化。
   - 若直接迁出执行逻辑但没有 intent / callback 契约，元数据层会失去闭环。
-  - 当前仓库仍有用户未提交的 `pkg/service/job.go` 改动，本轮未触碰。
+  - 当前仓库仍有用户未提交的 `pkg/service/release.go` 改动，本轮未触碰。
 - 下一轮最小切片：
-  - 先为 `Manifest.Create` 和 `Job.Create` 定义“落库 + 发意图”的统一契约，再考虑抽端口或拆进程。
+  - 先为 `Manifest.Create` 和 `Release.Create` 定义“落库 + 发意图”的统一契约，再考虑抽端口或拆进程。
 - Evaluator 重点复查项：
   - 元数据层不应继续直接依赖 Tekton / Argo client 执行业务主流程。
   - 状态终态仍应来自外部系统事件。

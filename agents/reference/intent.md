@@ -34,14 +34,14 @@
   - `Failed`
 - 当前确认的创建链路：
   - `POST /api/v1/manifests` 在 `intent` 模式下先落库 Manifest，再创建 build intent
-  - `POST /api/v1/jobs` 在 `intent` 模式下先落库 Job，再创建 release intent
+  - `POST /api/v1/releases` 在 `intent` 模式下先落库 Release，再创建 release intent
   - 创建响应会直接返回 `execution_intent_id`
 - 当前确认的消费链路：
   - `platform/release-service/cmd/worker` 轮询并认领 `Pending` intents
   - `pkg/service/intent.go` 使用 `claimed_by` + `lease_expires_at` 做 claim + lease
   - worker 提交外部执行后会把 intent 更新为 `Running` 并写入 `external_ref`
 - 当前确认的回写链路：
-  - `verify-service` 接收 Tekton / Argo 事件后，会同步回写 `Manifest`、`Job` 与 `Intent`
+  - `verify-service` 接收 Tekton / Argo 事件后，会同步回写 `Manifest`、`Release` 与 `Intent`
 
 ## Must Not
 

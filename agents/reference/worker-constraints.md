@@ -32,7 +32,7 @@
 - 优先复用现有模型、状态枚举、路由和 service 边界
 - `release-service` / `verify-service` / `controller` 相关改动，必须检查 observability 是否被破坏
 - 只要新增或变更 API 行为，就必须判断 Swagger 是否需要同步
-- 只要涉及 `Application` / `Manifest` / `Job` 状态，就必须对齐 ADR 001 的状态来源约束
+- 只要涉及 `Application` / `Manifest` / `Release` 状态，就必须对齐 ADR 001 的状态来源约束
 
 ## Must Not
 

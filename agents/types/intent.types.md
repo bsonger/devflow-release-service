@@ -9,8 +9,8 @@
 - application_name: string
 - manifest_id: string
 - manifest_name: string
-- job_id: string
-- job_type: string
+- release_id: string
+- release_type: string
 - env: string
 - repo_url: string
 - branch: string

@@ -24,13 +24,13 @@
 - 预期行为 / 验收标准：
   - 功能正确：
     - 文档明确 `devflow` 是元数据层，而不是 Tekton / Argo 的直接执行器。
-    - 文档明确 `ManifestService` 和 `JobService` 中哪些职责未来迁出。
+    - 文档明确 `ManifestService` 和 `ReleaseService` 中哪些职责未来迁出。
   - 资源一致：
-    - `Application`、`Manifest`、`Job` 仍是统一元数据模型，不被拆散到多个读模型。
+    - `Application`、`Manifest`、`Release` 仍是统一元数据模型，不被拆散到多个读模型。
   - 错误语义：
     - 区分“metadata accepted”与“execution succeeded”。
   - 日志 / 可观测性：
-    - 保持 trace / job ID / pipeline ID 可跨服务关联。
+    - 保持 trace / release ID / pipeline ID 可跨服务关联。
   - 文档 / Swagger 同步：
     - 本轮不涉及 Swagger 生成。
 - Evaluator Rubric：
@@ -38,7 +38,7 @@
   - `Pass with risks`：主体边界已清楚，但事件回写或协议部分仍有明确未知项。
   - `Fail`：如果文档仍无法回答“谁负责执行、谁负责状态真相、谁负责回写”，则失败。
 - 验证方法：
-  - 对照 `pkg/service/manifest.go`、`pkg/service/job.go`、`pkg/service/argo.go`、`pkg/config/config.go` 确认耦合点。
+  - 对照 `pkg/service/manifest.go`、`pkg/service/release.go`、`pkg/service/argo.go`、`pkg/config/config.go` 确认耦合点。
   - 对照现有 `agents/reference/*.md` 与 ADR 001，确保状态来源仍以外部系统为准。
   - 通过示例 handoff 固定下一轮最小切片。
 - 失败门槛：

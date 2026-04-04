@@ -1,7 +1,7 @@
 # 006 领域模型归仓库所有
 
 - 决策：
-  - `Application`、`Manifest`、`Job`、`Configuration` 及其状态枚举、公共方法迁入本仓库的 `pkg/model/`。
+  - `Application`、`Manifest`、`Release`、`Configuration` 及其状态枚举、公共方法迁入本仓库的 `pkg/model/`。
   - `devflow-common` 继续提供 logging、mongo、argo、tekton、otel 等 client，不再作为本仓库领域模型的权威来源。
 - 原因：
   - 当前仓库正在向 metadata/control plane 演进，领域模型应与 API、状态机、拆分边界一起版本化。

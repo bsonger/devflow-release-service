@@ -33,8 +33,8 @@ type Intent struct {
 	ApplicationName string              `bson:"application_name" json:"application_name"`
 	ManifestID      *primitive.ObjectID `bson:"manifest_id,omitempty" json:"manifest_id,omitempty"`
 	ManifestName    string              `bson:"manifest_name,omitempty" json:"manifest_name,omitempty"`
-	ReleaseID       *primitive.ObjectID `bson:"job_id,omitempty" json:"release_id,omitempty"`
-	ReleaseType     string              `bson:"job_type,omitempty" json:"release_type,omitempty"`
+	ReleaseID       *primitive.ObjectID `bson:"release_id,omitempty" json:"release_id,omitempty"`
+	ReleaseType     string              `bson:"release_type,omitempty" json:"release_type,omitempty"`
 	Env             string              `bson:"env,omitempty" json:"env,omitempty"`
 	RepoURL         string              `bson:"repo_url,omitempty" json:"repo_url,omitempty"`
 	Branch          string              `bson:"branch,omitempty" json:"branch,omitempty"`

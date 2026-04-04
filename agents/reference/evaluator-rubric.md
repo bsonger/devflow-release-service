@@ -30,7 +30,7 @@
   - 可运维性
   - 边界控制
 - 检查 handler / service / router 行为是否满足 contract
-- 检查 `Application` / `Manifest` / `Job` / `Intent` 的 ID 与状态关系是否一致
+- 检查 `Application` / `Manifest` / `Release` / `Intent` 的 ID 与状态关系是否一致
 - 区分真正跑过的测试和仅推断可过的部分
 - 检查 observability 是否退化：
   - trace 是否还能串起关键链路

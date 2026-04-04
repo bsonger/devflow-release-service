@@ -13,6 +13,6 @@
 
 - `application_id`
 - `manifest_id`
-- `job_id`
+- `release_id`
 - `intent_id`
 - `external_ref`

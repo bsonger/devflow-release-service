@@ -9,7 +9,7 @@
 适用于：
 
 - 需求跨 `pkg/api`、`pkg/service`、`pkg/router`、`agents/` 多个位置
-- 同时影响 `Application`、`Manifest`、`Job` 中两个及以上资源
+- 同时影响 `Application`、`Manifest`、`Release` 中两个及以上资源
 - 预计需要多轮迭代或明确 handoff 的任务
 
 不适用于：
@@ -27,7 +27,7 @@
 - `Planner` 负责 spec 与 contract
 - `Generator` 必须遵守 `reference/worker-constraints.md`
 - `Evaluator` 必须遵守 `reference/evaluator-rubric.md`
-- 切片优先按 `Application` / `Manifest` / `Job` 或单条状态流拆分
+- 切片优先按 `Application` / `Manifest` / `Release` 或单条状态流拆分
 - 若改动 API、路由或响应模型，必须判断 Swagger 是否需要同步
 - 若外部系统不可改，只能写清假设、边界和未验证项
 - 每轮必须产出当前 contract、evaluator report、handoff

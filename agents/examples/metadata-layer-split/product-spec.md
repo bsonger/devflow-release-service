@@ -6,7 +6,7 @@
   - 明确哪些职责保留在 `devflow`。
   - 明确哪些职责搬出到 Build Executor / Deploy Executor。
   - 给后续代码拆分设定最小迁移顺序，避免一次性重构过大。
-  - 保持现有 `Application`、`Manifest`、`Job` 作为统一元数据模型。
+  - 保持现有 `Application`、`Manifest`、`Release` 作为统一元数据模型。
 - 非目标：
   - 不在本轮决定消息中间件选型。
   - 不重构前端或客户端协议。
@@ -15,18 +15,18 @@
 - 影响资源：
   - `Application`
   - `Manifest`
-  - `Job`
+  - `Release`
   - `Configuration`
 - 影响模块：
   - `pkg/config`
   - `pkg/service/manifest.go`
-  - `pkg/service/job.go`
+  - `pkg/service/release.go`
   - `pkg/service/argo.go`
   - `agents/`
 - 保留在元数据层的职责：
-  - `Application` / `Manifest` / `Job` / `Configuration` 的 CRUD 与查询
+  - `Application` / `Manifest` / `Release` / `Configuration` 的 CRUD 与查询
   - active manifest 绑定
-  - Job / Manifest 状态读模型
+  - Release / Manifest 状态读模型
   - 接收外部事件并写回 Mongo
   - 发起 build / deploy intent
 - 拆出的职责：
@@ -35,7 +35,7 @@
   - 如有需要，独立 Event Ingestor 负责把外部事件标准化后写回元数据层
 - 状态流 / 数据流：
   - 客户端请求 `devflow`
-  - `devflow` 写入 `Application` / `Manifest` / `Job`
+  - `devflow` 写入 `Application` / `Manifest` / `Release`
   - `devflow` 产生 build 或 deploy intent
   - Executor 消费 intent 并调用 Tekton / Argo
   - Executor 或事件采集器把外部状态回写到 `devflow`

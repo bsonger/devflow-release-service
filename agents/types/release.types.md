@@ -1,4 +1,4 @@
-# Job 类型速查
+# Release 类型速查
 
 - id: string
 - execution_intent_id: string
@@ -10,9 +10,9 @@
 - env: string
 - type: string
 - status: Pending | Running | Succeeded | Failed | RollingBack | RolledBack | Syncing | SyncFailed
-- steps: []JobStep
+- steps: []ReleaseStep
 
-## JobStep
+## ReleaseStep
 - name: string
 - progress: int
 - status: Pending | Running | Succeeded | Failed

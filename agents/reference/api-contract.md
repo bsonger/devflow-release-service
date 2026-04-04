@@ -5,7 +5,7 @@
 当前仓库只允许：
 
 - `Manifest`
-- `Job`
+- `Release`
 - `Intent`
 
 禁止出现：

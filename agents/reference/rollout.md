@@ -20,7 +20,7 @@
   - 当前阶段
   - 可用副本数
   - 回滚信息
-- Rollout 观察器应通过 `verify-service` 的 `release/steps` 接口回写 `job.steps`
+- Rollout 观察器应通过 `verify-service` 的 `release/steps` 接口回写 `release.steps`
 
 ## Must Not
 

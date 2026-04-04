@@ -20,7 +20,7 @@
 - 示例必须体现完整的 Harness 工件链路
 - 使用示例时，应先理解结构，再回到 `templates/` 生成当前任务工件
 - 当前保留的示例包括：
-  - `job-status-alignment/`
+  - `release-status-alignment/`
   - `metadata-layer-split/`
 
 ## Must Not

@@ -38,7 +38,7 @@ flowchart LR
 
 ## 当前耦合点
 - `pkg/service/manifest.go` 直接创建 Tekton PVC、PipelineRun，并初始化 Manifest steps。
-- `pkg/service/job.go` 直接创建/更新 Argo Application，并触发 sync。
+- `pkg/service/release.go` 直接创建/更新 Argo Application，并触发 sync。
 - `pkg/config/config.go` 启动时同时初始化 Mongo、Tekton、Argo、OTel、Pyroscope。
 - 结果：API、元数据、执行器、状态回写耦合在一个进程里，拆分与独立扩缩容成本较高。
 
@@ -59,7 +59,7 @@ flowchart LR
 ```
 
 元数据层保留：
-- 资源模型：`Application`、`Manifest`、`Job`、`Configuration`
+- 资源模型：`Application`、`Manifest`、`Release`、`Configuration`
 - 状态与查询：Mongo 中的权威读模型
 - 编排意图：创建 build / deploy 请求，不直接执行
 - 状态回写入口：接收 Tekton / Argo 事件并更新元数据
@@ -80,7 +80,7 @@ flowchart LR
 - `docs/`：Swagger 输出（由 `swag` 生成，勿手动修改）。
 
 ## 模型归属
-- `Application`、`Manifest`、`Job`、`Configuration` 当前定义在 `pkg/model/`。
+- `Application`、`Manifest`、`Release`、`Configuration` 当前定义在 `pkg/model/`。
 - `devflow-common` 保留为 client 层依赖，不再作为本仓库的领域模型权威来源。
 
 ## 典型请求流程

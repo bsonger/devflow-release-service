@@ -1,29 +1,29 @@
-# Handoff：Job 状态语义对齐 / Sprint 01
+# Handoff：Release 状态语义对齐 / Sprint 01
 
 - 本轮结论：
-  - 已完成 Planner 产物与 Sprint 01 contract，并把 `Job.Create` 的状态语义收敛进共享文档。
+  - 已完成 Planner 产物与 Sprint 01 contract，并把 `Release.Create` 的状态语义收敛进共享文档。
 - 已完成内容：
-  - 新增 Job 状态语义对齐示例。
-  - 更新 `agents/reference/job.md`，明确创建链路中的本地状态。
+  - 新增 Release 状态语义对齐示例。
+  - 更新 `agents/reference/release.md`，明确创建链路中的本地状态。
   - 更新 `agents/patterns/status-flow.md`，补充 evaluator 必答问题。
   - 更新 `agents/README.md`，加入 `examples/` 入口。
 - 修改文件：
   - `agents/README.md`
-  - `agents/reference/job.md`
+  - `agents/reference/release.md`
   - `agents/patterns/status-flow.md`
   - `agents/examples/README.md`
-  - `agents/examples/job-status-alignment/product-spec.md`
-  - `agents/examples/job-status-alignment/sprint-01-contract.md`
-  - `agents/examples/job-status-alignment/handoff.md`
+  - `agents/examples/release-status-alignment/product-spec.md`
+  - `agents/examples/release-status-alignment/sprint-01-contract.md`
+  - `agents/examples/release-status-alignment/handoff.md`
 - 验证记录：
-  - 已对照 `pkg/api/job.go` 和 `pkg/service/job.go` 的当前创建链路编写示例。
+  - 已对照 `pkg/api/release.go` 和 `pkg/service/release.go` 的当前创建链路编写示例。
   - `go test ./...` 在可访问模块缓存后失败于仓库基线：Go 提示需要先执行 `go mod tidy`。
 - 未解决风险：
   - 终态回写链路不在当前仓库显式可见，后续代码实施时仍需补足事实来源。
-  - `pkg/service/job.go` 当前存在用户未提交改动，本轮未触碰。
+  - `pkg/service/release.go` 当前存在用户未提交改动，本轮未触碰。
   - Argo 标签中的 `status=Running` 与 Mongo 中 `Syncing` 仍未统一。
 - 下一轮最小切片：
-  - 若允许改代码，先只处理 `Job.Create` 中本地状态与日志语义一致性，不扩散到更多资源。
+  - 若允许改代码，先只处理 `Release.Create` 中本地状态与日志语义一致性，不扩散到更多资源。
 - Evaluator 重点复查项：
   - 不要把“Argo 请求已发出”判为“任务成功”。
   - 保持 ADR 001：运行态与终态优先来自外部系统事件。

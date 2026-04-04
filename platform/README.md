@@ -5,7 +5,7 @@ This repository only owns the `devflow-release-service` boundary.
 Runtime shape:
 
 - `cmd/main.go` uses shared bootstrap from `../devflow-service-common`
-- `pkg/router/` exposes only manifest/job/intent routes
+- `pkg/router/` exposes only manifest/release/intent routes
 - `pkg/api/` only contains release-side HTTP handler surfaces
 - `pkg/service/` contains release metadata logic and execution-side integration points
 

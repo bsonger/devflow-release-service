@@ -40,4 +40,4 @@
 ## Pass/Fail
 
 - `Pass`：`Application` 仍是元数据资源，而不是执行器
-- `Fail`：`Application` 语义被混入 Job/Manifest 执行状态细节
+- `Fail`：`Application` 语义被混入 Release/Manifest 执行状态细节

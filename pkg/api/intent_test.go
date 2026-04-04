@@ -83,9 +83,9 @@ func TestBuildIntentFilterReleaseIDAlias(t *testing.T) {
 	}
 
 	if got := filter["job_id"]; got != releaseID {
-		t.Fatalf("unexpected job_id filter: got %#v want %#v", got, releaseID)
+		t.Fatalf("unexpected legacy job_id filter: got %#v want %#v", got, releaseID)
 	}
 	if got := filter["job_type"]; got != "Upgrade" {
-		t.Fatalf("unexpected job_type filter: got %#v want %q", got, "Upgrade")
+		t.Fatalf("unexpected legacy job_type filter: got %#v want %q", got, "Upgrade")
 	}
 }
