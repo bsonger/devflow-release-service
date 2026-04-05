@@ -94,6 +94,12 @@ Client
 
 ## Swagger generation
 
+- Run `scripts/regen-swagger.sh` (or the Dockerfile) to generate `docs/generated/swagger`.
+- Use `scripts/build.sh` to regenerate swagger and rebuild the binary locally.
+- Export/release tooling expects the bundle in `docs/generated/swagger`, so keep it checked in.
+
+## Swagger generation
+
 - Build image runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before compiling the binary.
 - Generated swagger files live under `docs/generated/swagger`; preserve them if you export the repo.
 - `scripts/export_service_repo.sh` expects the generated bundle in `docs/generated/swagger` when copying docs.
