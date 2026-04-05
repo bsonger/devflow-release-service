@@ -3,26 +3,25 @@ package model
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
-type MongoModel interface {
-	CollectionName() string
-	GetID() primitive.ObjectID
-	SetID(id primitive.ObjectID)
-}
-
 type BaseModel struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
-	UpdatedAt time.Time          `bson:"updated_at" json:"updated_at"`
-	DeletedAt *time.Time         `bson:"deleted_at,omitempty" json:"deleted_at,omitempty"`
+	ID        uuid.UUID  `json:"id" db:"id"`
+	CreatedAt time.Time  `json:"created_at" db:"created_at"`
+	UpdatedAt time.Time  `json:"updated_at" db:"updated_at"`
+	DeletedAt *time.Time `json:"deleted_at,omitempty" db:"deleted_at"`
 }
 
-func (b BaseModel) GetID() primitive.ObjectID    { return b.ID }
-func (b *BaseModel) SetID(id primitive.ObjectID) { b.ID = id }
+func (b BaseModel) GetID() uuid.UUID { return b.ID }
+func (b *BaseModel) SetID(id uuid.UUID) {
+	b.ID = id
+}
 
 func (b *BaseModel) WithCreateDefault() {
+	if b.ID == uuid.Nil {
+		b.ID = uuid.New()
+	}
 	b.CreatedAt = time.Now()
 	b.WithUpdateDefault()
 }

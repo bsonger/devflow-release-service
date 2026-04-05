@@ -3,48 +3,31 @@ package model
 import (
 	"time"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
-)
-
-type IntentKind string
-
-const (
-	IntentKindBuild   IntentKind = "build"
-	IntentKindRelease IntentKind = "release"
-)
-
-type IntentStatus string
-
-const (
-	IntentPending   IntentStatus = "Pending"
-	IntentRunning   IntentStatus = "Running"
-	IntentSucceeded IntentStatus = "Succeeded"
-	IntentFailed    IntentStatus = "Failed"
+	"github.com/google/uuid"
 )
 
 type Intent struct {
-	BaseModel `bson:",inline"`
+	BaseModel
 
-	Kind            IntentKind          `bson:"kind" json:"kind"`
-	Status          IntentStatus        `bson:"status" json:"status"`
-	ResourceType    string              `bson:"resource_type" json:"resource_type"`
-	ResourceID      primitive.ObjectID  `bson:"resource_id" json:"resource_id"`
-	ApplicationID   primitive.ObjectID  `bson:"application_id" json:"application_id"`
-	ApplicationName string              `bson:"application_name" json:"application_name"`
-	ManifestID      *primitive.ObjectID `bson:"manifest_id,omitempty" json:"manifest_id,omitempty"`
-	ManifestName    string              `bson:"manifest_name,omitempty" json:"manifest_name,omitempty"`
-	ReleaseID       *primitive.ObjectID `bson:"release_id,omitempty" json:"release_id,omitempty"`
-	ReleaseType     string              `bson:"release_type,omitempty" json:"release_type,omitempty"`
-	Env             string              `bson:"env,omitempty" json:"env,omitempty"`
-	RepoURL         string              `bson:"repo_url,omitempty" json:"repo_url,omitempty"`
-	Branch          string              `bson:"branch,omitempty" json:"branch,omitempty"`
-	ExternalRef     string              `bson:"external_ref,omitempty" json:"external_ref,omitempty"`
-	Message         string              `bson:"message,omitempty" json:"message,omitempty"`
-	LastError       string              `bson:"last_error,omitempty" json:"last_error,omitempty"`
-	ClaimedBy       string              `bson:"claimed_by,omitempty" json:"claimed_by,omitempty"`
-	ClaimedAt       *time.Time          `bson:"claimed_at,omitempty" json:"claimed_at,omitempty"`
-	LeaseExpiresAt  *time.Time          `bson:"lease_expires_at,omitempty" json:"lease_expires_at,omitempty"`
-	AttemptCount    int                 `bson:"attempt_count,omitempty" json:"attempt_count,omitempty"`
+	Kind           IntentKind   `json:"kind" db:"kind"`
+	Status         IntentStatus `json:"status" db:"status"`
+	ResourceType   string       `json:"resource_type" db:"resource_type"`
+	ResourceID     uuid.UUID    `json:"resource_id" db:"resource_id"`
+	ApplicationID  uuid.UUID    `json:"application_id" db:"application_id"`
+	ManifestID     *uuid.UUID   `json:"manifest_id,omitempty" db:"manifest_id"`
+	ReleaseID      *uuid.UUID   `json:"release_id,omitempty" db:"release_id"`
+	ReleaseType    string       `json:"release_type,omitempty" db:"release_type"`
+	Env            string       `json:"env,omitempty" db:"env"`
+	RepoAddress    string       `json:"repo_address,omitempty" db:"repo_address"`
+	Branch         string       `json:"branch,omitempty" db:"branch"`
+	ExternalRef    string       `json:"external_ref,omitempty" db:"external_ref"`
+	TraceID        string       `json:"trace_id,omitempty" db:"trace_id"`
+	Message        string       `json:"message,omitempty" db:"message"`
+	LastError      string       `json:"last_error,omitempty" db:"last_error"`
+	ClaimedBy      string       `json:"claimed_by,omitempty" db:"claimed_by"`
+	ClaimedAt      *time.Time   `json:"claimed_at,omitempty" db:"claimed_at"`
+	LeaseExpiresAt *time.Time   `json:"lease_expires_at,omitempty" db:"lease_expires_at"`
+	AttemptCount   int          `json:"attempt_count" db:"attempt_count"`
 }
 
 func (Intent) CollectionName() string { return "execution_intents" }

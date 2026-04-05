@@ -1,60 +1,23 @@
 package model
 
-import (
-	"time"
-
-	appv1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-)
-
-type ReleaseStatus string
-
-const (
-	ReleasePending     ReleaseStatus = "Pending"
-	ReleaseRunning     ReleaseStatus = "Running"
-	ReleaseSucceeded   ReleaseStatus = "Succeeded"
-	ReleaseFailed      ReleaseStatus = "Failed"
-	ReleaseRollingBack ReleaseStatus = "RollingBack"
-	ReleaseRolledBack  ReleaseStatus = "RolledBack"
-	ReleaseSyncing     ReleaseStatus = "Syncing"
-	ReleaseSyncFailed  ReleaseStatus = "SyncFailed"
-
-	ReleaseInstall  string = "Install"
-	ReleaseUpgrade  string = "Upgrade"
-	ReleaseRollback string = "Rollback"
-
-	ReleaseIDLabel = "devflow.io/release-id"
-
-	defaultArgoProject = "app"
-)
+import "github.com/google/uuid"
 
 type Release struct {
-	BaseModel `bson:",inline"`
+	BaseModel
 
-	ExecutionIntentID *primitive.ObjectID `bson:"execution_intent_id,omitempty" json:"execution_intent_id,omitempty"`
-	ConfigurationID   *primitive.ObjectID `bson:"configuration_id,omitempty" json:"configuration_id,omitempty"`
-	ApplicationId     primitive.ObjectID  `bson:"application_id" json:"application_id"`
-	ApplicationName   string              `bson:"application_name" json:"application_name"`
-	ProjectName       string              `bson:"project_name" json:"project_name"`
-	ManifestID        primitive.ObjectID  `bson:"manifest_id" json:"manifest_id"`
-	ManifestName      string              `bson:"manifest_name" json:"manifest_name"`
-	Type              string              `bson:"type" json:"type"`
-	Env               string              `bson:"env" json:"env"`
-	Status            ReleaseStatus       `bson:"status" json:"status"`
-	Steps             []ReleaseStep       `bson:"steps,omitempty" json:"steps,omitempty"`
+	ExecutionIntentID       *uuid.UUID    `json:"execution_intent_id,omitempty" db:"execution_intent_id"`
+	ConfigurationID         *uuid.UUID    `json:"configuration_id,omitempty" db:"configuration_id"`
+	ConfigurationRevisionID *uuid.UUID    `json:"configuration_revision_id,omitempty" db:"configuration_revision_id"`
+	ApplicationID           uuid.UUID     `json:"application_id" db:"application_id"`
+	ManifestID              uuid.UUID     `json:"manifest_id" db:"manifest_id"`
+	Env                     string        `json:"env" db:"env"`
+	Type                    string        `json:"type" db:"type"`
+	Steps                   []ReleaseStep `json:"steps,omitempty" db:"steps"`
+	Status                  ReleaseStatus `json:"status" db:"status"`
+	ExternalRef             string        `json:"external_ref,omitempty" db:"external_ref"`
 }
 
-func (r *Release) CollectionName() string { return "release" }
-
-type ReleaseStep struct {
-	Name      string     `bson:"name" json:"name"`
-	Progress  int32      `bson:"progress" json:"progress"`
-	Status    StepStatus `bson:"status" json:"status"`
-	Message   string     `bson:"message,omitempty" json:"message,omitempty"`
-	StartTime *time.Time `bson:"start_time,omitempty" json:"start_time,omitempty"`
-	EndTime   *time.Time `bson:"end_time,omitempty" json:"end_time,omitempty"`
-}
+func (r *Release) CollectionName() string { return "releases" }
 
 func DeriveReleaseStatusFromSteps(releaseAction string, currentStatus ReleaseStatus, steps []ReleaseStep) ReleaseStatus {
 	switch currentStatus {
@@ -143,47 +106,4 @@ func DefaultReleaseSteps(strategy ReleaseType, releaseAction string) []ReleaseSt
 	}
 
 	return steps
-}
-
-func (r *Release) GenerateApplication() *appv1.Application {
-	manifestID := r.ManifestID.Hex()
-	releaseID := r.ID.Hex()
-
-	return &appv1.Application{
-		TypeMeta: metav1.TypeMeta{
-			Kind:       "Application",
-			APIVersion: "argoproj.io/v1alpha1",
-		},
-		ObjectMeta: metav1.ObjectMeta{
-			Name: r.ApplicationName,
-		},
-		Spec: appv1.ApplicationSpec{
-			Project: defaultArgoProject,
-			Source: &appv1.ApplicationSource{
-				RepoURL: manifestRepo.Address,
-				Path:    "./",
-				Plugin: &appv1.ApplicationSourcePlugin{
-					Name: "plugin",
-					Parameters: []appv1.ApplicationSourcePluginParameter{
-						{
-							Name:    "env",
-							String_: &r.Env,
-						},
-						{
-							Name:    "manifest-id",
-							String_: &manifestID,
-						},
-						{
-							Name:    "release-id",
-							String_: &releaseID,
-						},
-					},
-				},
-			},
-			Destination: appv1.ApplicationDestination{
-				Server:    "https://kubernetes.default.svc",
-				Namespace: r.ProjectName,
-			},
-		},
-	}
 }

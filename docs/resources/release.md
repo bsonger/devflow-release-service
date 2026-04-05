@@ -5,7 +5,7 @@
 - owner repo: `devflow-release-service`
 - authoritative model file: `pkg/model/release.go`
 - authoritative API doc: `docs/api-spec.md`
-- swagger source: `docs/swagger.yaml`
+- generated swagger: `docs/swagger.yaml` (transitional; still reflects legacy handler layer until API migration)
 
 ## Purpose
 
@@ -15,7 +15,7 @@
 
 | Field | Type | Required | Writable | Description |
 |---|---|---|---|---|
-| `id` | `ObjectID` | server-generated | no | 主键 |
+| `id` | `uuid.UUID` | server-generated | no | 主键 |
 | `created_at` | `time.Time` | server-generated | no | 创建时间 |
 | `updated_at` | `time.Time` | server-generated | no | 更新时间 |
 | `deleted_at` | `*time.Time` | optional | system-managed | 软删除时间 |
@@ -24,17 +24,16 @@
 
 | Field | Type | Required | Writable | Description |
 |---|---|---|---|---|
-| `execution_intent_id` | `*ObjectID` | optional | system | 关联 release intent |
-| `application_id` | `ObjectID` | system-derived | system | 应用 ID |
-| `application_name` | `string` | system-derived | system | 应用名 |
-| `project_name` | `string` | system-derived | system | 项目名/命名空间上下文 |
-| `manifest_id` | `ObjectID` | required in practice | user | 发布基于哪个 manifest |
-| `manifest_name` | `string` | system-derived | system | manifest 名 |
-| `configuration_id` | `*ObjectID` | optional | user/system | 关联的 Configuration ID |
+| `execution_intent_id` | `*uuid.UUID` | optional | system | 关联 release intent |
+| `configuration_id` | `*uuid.UUID` | optional | user/system | 关联的 Configuration ID |
+| `configuration_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的配置 revision |
+| `application_id` | `uuid.UUID` | system-derived | system | 应用 ID |
+| `manifest_id` | `uuid.UUID` | required | user | 发布基于哪个 manifest |
 | `type` | `string` | optional | user/system | 发布动作；为空默认 `Upgrade` |
 | `env` | `string` | optional | user/system | 目标环境；为空默认 `prod` |
 | `status` | `ReleaseStatus` | system-defaulted | verify/system | 发布状态 |
 | `steps` | `[]ReleaseStep` | optional | verify/system | 发布步骤集合 |
+| `external_ref` | `string` | optional | verify/system | 外部系统引用 |
 
 ## Nested types
 
@@ -64,7 +63,7 @@
 ## Lifecycle / status fields
 
 - public owner: `devflow-release-service`
-- verify writeback path: `devflow-verify-service`
+- verify writeback path: verify result ownership is in `devflow-verify-service`
 - defaults:
   - create 时 `status = Pending`
   - 若未提供 `steps`，会根据应用策略和发布动作自动生成默认步骤
@@ -81,8 +80,7 @@
   - `manifest_id`
 - defaults / derived values:
   - `type` 为空时默认 `Upgrade`
-  - `manifest_name`、`application_id` 来自 `Manifest`
-  - `application_name`、`project_name` 来自 `Application`
+  - `application_id` 来自 `Manifest`
   - `env` 为空时默认 `prod`
   - `status` 初始化为 `Pending`
   - `steps` 可自动生成
@@ -100,9 +98,9 @@
 
 ## Validation notes
 
-- `manifest_id` 必须是合法且存在的 `Manifest`
-- 列表过滤里的 `application_id`、`manifest_id` 必须是合法 ObjectID
-- 当前 `env` 不是用户自由输入字段，而是服务内派生值
+- `manifest_id` 必须引用存在的 `Manifest`
+- 若同时传 `configuration_id` 与 `configuration_revision_id`，两者必须属于同一配置
+- 当前 `env` 不是完全自由输入字段，而是服务约束下的目标环境
 
 ## Source pointers
 

@@ -48,3 +48,7 @@
 ## Boundary Note
 
 For repo scope and non-goals, see `docs/architecture.md`.
+
+## Transitional Note
+
+Generated Swagger artifacts in this repo still reflect the legacy Mongo/ObjectID handler layer and should be regenerated after the API layer adopts the relational contract.

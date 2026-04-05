@@ -23,6 +23,12 @@ The service layer is the domain center:
 - coordination with Tekton / Argo / Kubernetes adapters
 - resolution of app/config metadata into release-owned snapshots and references
 
+The target relational resource model is:
+
+- `Manifest` = build artifact + frozen repository/service snapshot
+- `Release` = deploy command + config reference + rollout state
+- `Intent` = long-running execution tracking record
+
 ## Request Flow
 
 ### Command path
@@ -77,6 +83,7 @@ Client
 - `devflow-service-common`
 - Tekton-related clients / resources
 - Argo CD / Kubernetes adapters
+- transitional Mongo-based handlers/stores still exist outside this model/schema slice
 
 ## Non-Goals
 
