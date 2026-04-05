@@ -139,7 +139,7 @@ RUN go mod download
 
 COPY . .
 
-RUN GOROOT=\$(go env GOROOT) swag init -g cmd/main.go --parseDependency
+RUN GOROOT=\$(go env GOROOT) swag init -g cmd/main.go --parseDependency -o docs/generated/swagger
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o ${binary_name} ./cmd
 
 FROM alpine:3.19
@@ -177,7 +177,7 @@ git -C "${target_dir}" remote add origin "git@github.com:bsonger/${repo_name}.gi
 if command -v swag >/dev/null 2>&1; then
   (
     cd "${target_dir}"
-    GOROOT="$(go env GOROOT)" swag init -g cmd/main.go --parseDependency >/dev/null
+    GOROOT="$(go env GOROOT)" swag init -g cmd/main.go --parseDependency -o docs/generated/swagger >/dev/null
   )
 fi
 

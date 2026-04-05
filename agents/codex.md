@@ -92,7 +92,7 @@ curl -X PATCH "http://localhost:8080/api/v1/manifests/manifest_001" \
 ## 配置与运行
 - 本地运行：`go run ./cmd`（默认读取 `config/config.yaml`）。
 - 构建二进制：`go build -o devflow cmd/main.go`。
-- 生成 Swagger：`swag init -g cmd/main.go --parseDependency`。
+- 生成 Swagger：`swag init -g cmd/main.go --parseDependency -o docs/generated/swagger`。
 
 ## 运行时依赖
 - 需要有效 kubeconfig：`$HOME/.kube/config` 或集群内配置。
