@@ -4,6 +4,7 @@
 
 `devflow-release-service` is the control-plane owner for `Manifest`, `Release`, and `Intent`.
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
+It freezes build-time repository/service metadata into `Manifest` and binds release execution to configuration references.
 
 ## Architecture Style
 
@@ -20,6 +21,7 @@ The service layer is the domain center:
 - build/release command rules
 - public control-plane state semantics
 - coordination with Tekton / Argo / Kubernetes adapters
+- resolution of app/config metadata into release-owned snapshots and references
 
 ## Request Flow
 
@@ -29,7 +31,7 @@ The service layer is the domain center:
 Client
   -> manifest/release handler
   -> release service logic
-  -> Mongo persistence
+  -> control-plane persistence
   -> runtime / external adapter dispatch
   -> HTTP response
 ```
@@ -40,7 +42,7 @@ Client
 Client
   -> manifest/release/intent handler
   -> release query logic
-  -> Mongo store
+  -> persistence store
   -> HTTP response
 ```
 
@@ -60,6 +62,7 @@ Client
   - lifecycle rules
   - command/query logic
   - adapter coordination
+  - app/config reference resolution
 - `pkg/runtime`
   - execution-mode switching
 - `pkg/model`
@@ -70,7 +73,7 @@ Client
 ## External Dependencies
 
 - `Gin`
-- `MongoDB`
+- PostgreSQL target persistence
 - `devflow-service-common`
 - Tekton-related clients / resources
 - Argo CD / Kubernetes adapters
@@ -81,3 +84,4 @@ Client
 - `Configuration` ownership
 - verify webhook / writeback ingress
 - platform UI aggregation ownership
+- environment-variable ownership outside configuration references
