@@ -1,83 +1,16 @@
-# Devflow 文档（Codex）
+# Codex Repo Context
 
-## 概述
-Devflow 是一个基于 Go 的 API 服务，使用 Gin 作为路由层，业务逻辑集中在 `pkg/service`，并通过配置驱动外部依赖（如 Argo CD、Tekton、Mongo、OTel 等集成模块）。配置既支持本地 `config/config.yaml`，也可从 `/etc/devflow/config/` 加载。
+This file provides working context only.
 
-## 项目启动协议
+Read authoritative documentation here:
 
-进入当前仓库后，默认先加载 3 角色 Harness：
+- global architecture: `devflow-control/docs/system/architecture.md`
+- boundaries: `devflow-control/docs/system/boundaries.md`
+- repo-local architecture: `docs/architecture.md`
+- repo-local API surface: `docs/api-spec.md`
+- repo-local resources: `docs/resources/*.md`
 
-- `Planner`
-- `Generator`
-- `Evaluator`
-
-启动顺序参考：
-
-- 根目录 `AGENTS.md`
-- `agents/README.md`
-- `agents/manifest.yaml`
-- `agents/protocols/startup.md`
-
-说明：
-
-- 这 3 个角色默认存在
-- 若运行时允许 delegation，则应实际创建 3 个 agent
-- 若运行时不允许 delegation，则由主 agent 串行扮演 3 个角色，但不能跳过 spec / contract / handoff / evaluator 结论
-- 对于非简单需求，默认要在 `agents/runs/YYYYMMDD-<slug>/` 下形成完整工件，并按 `Planner -> Generator -> Evaluator` 自动串联到可交付或明确失败边界
-
-## 架构图（Mermaid）
-```mermaid
-flowchart LR
-  Client[客户端] -->|HTTP| Router[路由层 pkg/router]
-  Router --> Handler[处理层 pkg/api]
-  Handler --> Service[业务层 pkg/service]
-  Service --> External[外部系统\nArgo CD / Tekton / Mongo / OTel]
-  Service --> Config[配置加载 pkg/config]
-  Config --> Files[config/config.yaml\n或 /etc/devflow/config/]
-```
-
-## 当前耦合点
-- `pkg/service/manifest.go` 直接创建 Tekton PVC、PipelineRun，并初始化 Manifest steps。
-- `pkg/service/release.go` 直接创建/更新 Argo Application，并触发 sync。
-- `pkg/config/config.go` 启动时同时初始化 Mongo、Tekton、Argo、OTel、Pyroscope。
-- 结果：API、元数据、执行器、状态回写耦合在一个进程里，拆分与独立扩缩容成本较高。
-
-## 目标架构：Devflow 作为元数据层
-若将本仓库定位为元数据层，推荐目标是“控制面 + 执行器”拆分：
-
-```mermaid
-flowchart LR
-  Client[客户端] -->|HTTP| MetaAPI[Devflow Metadata API]
-  MetaAPI --> MetaStore[(Mongo Metadata)]
-  MetaAPI --> Intent[(Build / Deploy Intent)]
-  BuildWorker[Build Executor] -->|消费 build intent| Intent
-  DeployWorker[Deploy Executor] -->|消费 deploy intent| Intent
-  BuildWorker --> Tekton[Tekton]
-  DeployWorker --> Argo[Argo CD]
-  Tekton -->|事件 / 回调| MetaAPI
-  Argo -->|事件 / 回调| MetaAPI
-```
-
-元数据层保留：
-- 资源模型：`Application`、`Manifest`、`Release`、`Configuration`
-- 状态与查询：Mongo 中的权威读模型
-- 编排意图：创建 build / deploy 请求，不直接执行
-- 状态回写入口：接收 Tekton / Argo 事件并更新元数据
-
-执行器拆出：
-- Build Executor：拥有 Tekton client，负责实际构建与步骤回写
-- Deploy Executor：拥有 Argo client，负责实际发布、同步与运行态回写
-
-## 模块说明
-- `cmd/main.go`：服务入口，启动路由与依赖初始化。
-- `pkg/model/`：本仓库自有的领域模型与状态定义。
-- `pkg/router/`：Gin 路由与中间件。
-- `pkg/api/`：请求/响应模型与 Handler。
-- `pkg/service/`：业务逻辑与外部系统集成。
-- `pkg/config/`：配置加载与客户端初始化。
-- `platform/`：拆分后的平台服务入口。
-- `config/config.yaml`：本地默认配置。
-- `docs/`：Swagger 输出（由 `swag` 生成，勿手动修改）。
+Do not treat this file as a source of resource or boundary truth.
 
 ## 模型归属
 - `Application`、`Manifest`、`Release`、`Configuration` 当前定义在 `pkg/model/`。
