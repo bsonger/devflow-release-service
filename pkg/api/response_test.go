@@ -3,30 +3,30 @@ package api
 import (
 	"testing"
 
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
 func TestNewCreateResponse(t *testing.T) {
-	id := primitive.NewObjectID()
-	intentID := primitive.NewObjectID()
+	id := uuid.New()
+	intentID := uuid.New()
 
 	resp := newCreateResponse(id, &intentID)
 
-	if resp.ID != id.Hex() {
-		t.Fatalf("unexpected id: got %q want %q", resp.ID, id.Hex())
+	if resp.ID != id.String() {
+		t.Fatalf("unexpected id: got %q want %q", resp.ID, id.String())
 	}
-	if resp.ExecutionIntentID != intentID.Hex() {
-		t.Fatalf("unexpected execution_intent_id: got %q want %q", resp.ExecutionIntentID, intentID.Hex())
+	if resp.ExecutionIntentID != intentID.String() {
+		t.Fatalf("unexpected execution_intent_id: got %q want %q", resp.ExecutionIntentID, intentID.String())
 	}
 }
 
 func TestNewCreateResponseWithoutIntent(t *testing.T) {
-	id := primitive.NewObjectID()
+	id := uuid.New()
 
 	resp := newCreateResponse(id, nil)
 
-	if resp.ID != id.Hex() {
-		t.Fatalf("unexpected id: got %q want %q", resp.ID, id.Hex())
+	if resp.ID != id.String() {
+		t.Fatalf("unexpected id: got %q want %q", resp.ID, id.String())
 	}
 	if resp.ExecutionIntentID != "" {
 		t.Fatalf("unexpected execution_intent_id: got %q want empty", resp.ExecutionIntentID)

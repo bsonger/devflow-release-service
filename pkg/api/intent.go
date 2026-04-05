@@ -8,6 +8,7 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -62,7 +63,7 @@ func (h *IntentHandler) List(c *gin.Context) {
 // @Failure 404 {object} map[string]string
 // @Router /api/v1/intents/{id} [get]
 func (h *IntentHandler) Get(c *gin.Context) {
-	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -89,18 +90,12 @@ func buildIntentFilter(c *gin.Context) (primitive.M, error) {
 	if resourceType := strings.TrimSpace(c.Query("resource_type")); resourceType != "" {
 		filter["resource_type"] = resourceType
 	}
-	if applicationName := strings.TrimSpace(c.Query("application_name")); applicationName != "" {
-		filter["application_name"] = applicationName
-	}
-	if manifestName := strings.TrimSpace(c.Query("manifest_name")); manifestName != "" {
-		filter["manifest_name"] = manifestName
-	}
 	releaseType := strings.TrimSpace(c.Query("release_type"))
 	if releaseType == "" {
 		releaseType = strings.TrimSpace(c.Query("job_type"))
 	}
 	if releaseType != "" {
-		filter["job_type"] = releaseType
+		filter["release_type"] = releaseType
 	}
 	if env := strings.TrimSpace(c.Query("env")); env != "" {
 		filter["env"] = env
@@ -128,7 +123,7 @@ func buildIntentFilter(c *gin.Context) (primitive.M, error) {
 	if releaseID == "" {
 		releaseID = c.Query("job_id")
 	}
-	if err := setObjectIDFilter(filter, "job_id", releaseID); err != nil {
+	if err := setObjectIDFilter(filter, "release_id", releaseID); err != nil {
 		return nil, err
 	}
 
@@ -141,11 +136,14 @@ func setObjectIDFilter(filter primitive.M, field, raw string) error {
 		return nil
 	}
 
-	id, err := primitive.ObjectIDFromHex(value)
+	id, err := uuid.Parse(value)
 	if err != nil {
 		return fmt.Errorf("invalid %s", field)
 	}
-
-	filter[field] = id
+	oid, err := service.BridgeUUIDToObjectID(id)
+	if err != nil {
+		return fmt.Errorf("invalid %s", field)
+	}
+	filter[field] = oid
 	return nil
 }

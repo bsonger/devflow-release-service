@@ -4,16 +4,16 @@ import (
 	"testing"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
 func TestPopulateReleaseDefaultsPreservesProvidedEnv(t *testing.T) {
-	manifestID := primitive.NewObjectID()
-	appID := primitive.NewObjectID()
-	cfgID := primitive.NewObjectID()
+	manifestID := uuid.New()
+	appID := uuid.New()
+	cfgID := uuid.New()
 	release := &model.Release{ManifestID: manifestID, ConfigurationID: &cfgID, Env: "staging"}
-	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationId: appID}
-	app := &model.Application{Name: "demo", ProjectName: "proj", Type: model.Normal}
+	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationID: appID}
+	app := &applicationProjection{Name: "demo", ProjectName: "proj", Type: model.Normal}
 
 	populateReleaseDefaults(release, manifest, app)
 
@@ -26,11 +26,11 @@ func TestPopulateReleaseDefaultsPreservesProvidedEnv(t *testing.T) {
 }
 
 func TestPopulateReleaseDefaultsFallsBackToProd(t *testing.T) {
-	manifestID := primitive.NewObjectID()
-	appID := primitive.NewObjectID()
+	manifestID := uuid.New()
+	appID := uuid.New()
 	release := &model.Release{ManifestID: manifestID}
-	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationId: appID}
-	app := &model.Application{Name: "demo", ProjectName: "proj", Type: model.Normal}
+	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationID: appID}
+	app := &applicationProjection{Name: "demo", ProjectName: "proj", Type: model.Normal}
 
 	populateReleaseDefaults(release, manifest, app)
 

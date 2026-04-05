@@ -12,25 +12,24 @@ import (
 	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	mongoDriver "go.mongodb.org/mongo-driver/mongo"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var ReleaseService = &releaseService{}
 
 type releaseService struct{}
 
-func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, app *model.Application) {
-	release.ManifestName = manifest.Name
-	release.ApplicationId = manifest.ApplicationId
+func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, app *applicationProjection) {
+	release.ApplicationID = manifest.ApplicationID
 	if release.Type == "" {
 		release.Type = model.ReleaseUpgrade
 	}
-	release.ApplicationName = app.Name
-	release.ProjectName = app.ProjectName
 	if release.Env == "" {
 		release.Env = "prod"
 	}
@@ -40,55 +39,37 @@ func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, a
 	}
 }
 
-func (s *releaseService) Create(ctx context.Context, release *model.Release) (primitive.ObjectID, error) {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.type", release.Type),
-		zap.String("manifest.id", release.ManifestID.Hex()),
-	)
-
-	log.Info("release create started")
+func (s *releaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
+	log := logging.LoggerWithContext(ctx).With(zap.String("release.type", release.Type), zap.String("manifest.id", release.ManifestID.String()))
 
 	manifest, err := ManifestService.Get(ctx, release.ManifestID)
 	if err != nil {
-		log.Error("get manifest failed", zap.Error(err))
-		return primitive.NilObjectID, err
+		return uuid.Nil, err
 	}
-
-	app, err := ApplicationService.Get(ctx, manifest.ApplicationId)
+	app, err := ApplicationService.Get(ctx, manifest.ApplicationID)
 	if err != nil {
-		log.Error("get application failed",
-			zap.String("application.id", manifest.ApplicationId.Hex()),
-			zap.Error(err),
-		)
-		return primitive.NilObjectID, err
+		return uuid.Nil, err
 	}
 
 	populateReleaseDefaults(release, manifest, app)
 	release.WithCreateDefault()
-
-	if err := mongo.Repo.Create(ctx, release); err != nil {
-		log.Error("create release record failed", zap.Error(err))
-		return primitive.NilObjectID, err
+	doc, err := releaseToDoc(release)
+	if err != nil {
+		return uuid.Nil, err
 	}
+	if err := mongo.Repo.Create(ctx, doc); err != nil {
+		return uuid.Nil, err
+	}
+	release.ID = bridgeObjectIDToUUID(doc.ID)
 
-	log = log.With(
-		zap.String("release.id", release.ID.Hex()),
-		zap.String("application.id", release.ApplicationId.Hex()),
-	)
-
-	log.Info("release record created")
+	log = log.With(zap.String("release.id", release.ID.String()), zap.String("application.id", release.ApplicationID.String()))
 
 	if runtime.IsIntentMode() {
 		intentID, err := IntentService.CreateReleaseIntent(ctx, release)
 		if err != nil {
-			log.Error("create release intent failed", zap.Error(err))
 			return release.ID, err
 		}
-
-		log.Info("release accepted in intent mode",
-			zap.String("intent_id", intentID.Hex()),
-		)
-
+		log.Info("release accepted in intent mode", zap.String("intent_id", intentID.String()))
 		return release.ID, nil
 	}
 
@@ -96,266 +77,156 @@ func (s *releaseService) Create(ctx context.Context, release *model.Release) (pr
 		s.handleSyncArgoError(ctx, release, err)
 		return release.ID, err
 	}
-
-	log.Info("release synced to argo successfully")
-
 	return release.ID, nil
 }
 
-func (s *releaseService) DispatchRelease(ctx context.Context, releaseID primitive.ObjectID) error {
+func (s *releaseService) DispatchRelease(ctx context.Context, releaseID uuid.UUID) error {
 	release, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
-
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.id", release.ID.Hex()),
-	)
-
 	if err := s.updateStatus(ctx, release.ID, model.ReleaseSyncing); err != nil {
-		log.Error("update release status to syncing failed", zap.Error(err))
 		return err
 	}
-
 	release.Status = model.ReleaseSyncing
-
-	log.Info("release status changed",
-		zap.String("release.status", string(release.Status)),
-	)
-
-	if err := s.syncArgo(ctx, release); err != nil {
-		return err
-	}
-
-	log.Info("release synced to argo successfully")
-	return nil
+	return s.syncArgo(ctx, release)
 }
 
 func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model.Release, err error) {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.id", release.ID.Hex()),
-		zap.String("release.type", release.Type),
-	)
-
+	log := logging.LoggerWithContext(ctx).With(zap.String("release.id", release.ID.String()), zap.String("release.type", release.Type))
 	log.Error("sync argo failed", zap.Error(err))
-
-	if uErr := s.updateStatus(ctx, release.ID, model.ReleaseSyncFailed); uErr != nil {
-		log.Error("update release status to failed failed", zap.Error(uErr))
-	}
+	_ = s.updateStatus(ctx, release.ID, model.ReleaseSyncFailed)
 }
 
-func (s *releaseService) Get(ctx context.Context, id primitive.ObjectID) (*model.Release, error) {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.id", id.Hex()),
-		zap.String("operation", "get_release"),
-	)
-
-	release := &model.Release{}
-	err := mongo.Repo.FindByID(ctx, release, id)
+func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*model.Release, error) {
+	oid, err := bridgeUUIDToObjectID(id)
 	if err != nil {
-		log.Error("get release failed", zap.Error(err))
 		return nil, err
 	}
-	if release.DeletedAt != nil {
-		log.Warn("release already deleted")
+	doc := &releaseDoc{}
+	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
+		return nil, err
+	}
+	if doc.DeletedAt != nil {
 		return nil, mongoDriver.ErrNoDocuments
 	}
-
-	log.Debug("release fetched")
-	return release, nil
+	r := releaseFromDoc(doc)
+	return &r, nil
 }
 
 func (s *releaseService) Update(ctx context.Context, release *model.Release) error {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.id", release.ID.Hex()),
-		zap.String("operation", "update_release"),
-	)
-
-	current := &model.Release{}
-	if err := mongo.Repo.FindByID(ctx, current, release.ID); err != nil {
-		log.Error("load release failed", zap.Error(err))
+	current, err := s.Get(ctx, release.ID)
+	if err != nil {
 		return err
 	}
-	if current.DeletedAt != nil {
-		log.Warn("update skipped for deleted release")
-		return mongoDriver.ErrNoDocuments
-	}
-
 	release.CreatedAt = current.CreatedAt
 	release.DeletedAt = current.DeletedAt
 	release.WithUpdateDefault()
-
-	if err := mongo.Repo.Update(ctx, release); err != nil {
-		log.Error("update release failed", zap.Error(err))
+	doc, err := releaseToDoc(release)
+	if err != nil {
 		return err
 	}
-
-	log.Debug("release updated")
-	return nil
+	oid, err := bridgeUUIDToObjectID(release.ID)
+	if err != nil {
+		return err
+	}
+	doc.ID = oid
+	return mongo.Repo.Update(ctx, doc)
 }
 
-func (s *releaseService) Delete(ctx context.Context, id primitive.ObjectID) error {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("release.id", id.Hex()),
-		zap.String("operation", "delete_release"),
-	)
-
-	now := time.Now()
-	update := primitive.M{
-		"$set": primitive.M{
-			"deleted_at": now,
-			"updated_at": now,
-		},
-	}
-
-	if err := mongo.Repo.UpdateByID(ctx, &model.Release{}, id, update); err != nil {
-		log.Error("delete release failed", zap.Error(err))
+func (s *releaseService) Delete(ctx context.Context, id uuid.UUID) error {
+	oid, err := bridgeUUIDToObjectID(id)
+	if err != nil {
 		return err
 	}
-
-	log.Info("release deleted")
-	return nil
+	return mongo.Repo.UpdateByID(ctx, &releaseDoc{}, oid, primitive.M{"$set": primitive.M{"deleted_at": time.Now(), "updated_at": time.Now()}})
 }
 
 func (s *releaseService) List(ctx context.Context, filter primitive.M) ([]*model.Release, error) {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("operation", "list_releases"),
-		zap.Any("filter", filter),
-	)
-
-	var releases []*model.Release
-	if err := mongo.Repo.List(ctx, &model.Release{}, filter, &releases); err != nil {
-		log.Error("list releases failed", zap.Error(err))
+	var docs []releaseDoc
+	if err := mongo.Repo.List(ctx, &releaseDoc{}, filter, &docs); err != nil {
 		return nil, err
 	}
-
-	log.Debug("list releases success", zap.Int("count", len(releases)))
-	return releases, nil
+	out := make([]*model.Release, 0, len(docs))
+	for i := range docs {
+		item := releaseFromDoc(&docs[i])
+		out = append(out, &item)
+	}
+	return out, nil
 }
 
-func (s *releaseService) updateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
-	filter := bson.M{
-		"_id": releaseID,
-		"status": bson.M{
-			"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, status},
-		},
+func (s *releaseService) updateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
 	}
-	update := bson.M{
-		"$set": bson.M{
-			"status":     status,
-			"updated_at": time.Now(),
-		},
-	}
-	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
+	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id":    oid,
+		"status": bson.M{"$nin": []model.ReleaseStatus{model.ReleaseSucceeded, model.ReleaseFailed, model.ReleaseRolledBack, model.ReleaseSyncFailed, status}},
+	}, bson.M{"$set": bson.M{"status": status, "updated_at": time.Now()}})
 }
 
-func (s *releaseService) UpdateStatus(ctx context.Context, releaseID primitive.ObjectID, status model.ReleaseStatus) error {
+func (s *releaseService) UpdateStatus(ctx context.Context, releaseID uuid.UUID, status model.ReleaseStatus) error {
 	return s.updateStatus(ctx, releaseID, status)
 }
 
-func (s *releaseService) UpdateStep(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+func (s *releaseService) UpdateStep(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
 	if stepName == "" {
 		return nil
 	}
-
 	if progress < 0 {
 		progress = 0
 	}
 	if progress > 100 {
 		progress = 100
 	}
-
 	release, err := s.Get(ctx, releaseID)
 	if err != nil {
 		return err
 	}
-
 	nextSteps := cloneReleaseSteps(release.Steps)
 	currentStep := findReleaseStep(release.Steps, stepName)
 	if currentStep == nil {
 		if err := s.createStepIfNotExists(ctx, releaseID, stepName, status, progress, message, start, end); err != nil {
 			return err
 		}
-
-		nextSteps = append(nextSteps, model.ReleaseStep{
-			Name:      stepName,
-			Progress:  progress,
-			Status:    status,
-			Message:   message,
-			StartTime: start,
-			EndTime:   end,
-		})
+		nextSteps = append(nextSteps, model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end})
 		return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 	}
-
 	if currentStep.Status == model.StepFailed || currentStep.Status == model.StepSucceeded {
 		return nil
 	}
-
-	update := bson.M{
-		"steps.$.status":   status,
-		"steps.$.progress": progress,
-		"steps.$.message":  message,
-		"updated_at":       time.Now(),
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
 	}
+	update := bson.M{"steps.$.status": status, "steps.$.progress": progress, "steps.$.message": message, "updated_at": time.Now()}
 	if start != nil {
 		update["steps.$.start_time"] = *start
 	}
 	if end != nil {
 		update["steps.$.end_time"] = *end
 	}
-
-	filter := bson.M{
-		"_id": releaseID,
-		"steps": bson.M{
-			"$elemMatch": bson.M{
-				"name": stepName,
-				"status": bson.M{
-					"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded},
-				},
-			},
-		},
-	}
-
-	if err := mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, bson.M{"$set": update}); err != nil {
+	if err := mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id":   oid,
+		"steps": bson.M{"$elemMatch": bson.M{"name": stepName, "status": bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded}}}},
+	}, bson.M{"$set": update}); err != nil {
 		return err
 	}
-
 	applyReleaseStepUpdate(nextSteps, stepName, status, progress, message, start, end)
 	return s.updateStatusFromSteps(ctx, releaseID, release.Type, release.Status, nextSteps)
 }
 
-func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID primitive.ObjectID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
-	step := model.ReleaseStep{
-		Name:      stepName,
-		Progress:  progress,
-		Status:    status,
-		Message:   message,
-		StartTime: start,
-		EndTime:   end,
+func (s *releaseService) createStepIfNotExists(ctx context.Context, releaseID uuid.UUID, stepName string, status model.StepStatus, progress int32, message string, start, end *time.Time) error {
+	oid, err := bridgeUUIDToObjectID(releaseID)
+	if err != nil {
+		return err
 	}
-
-	filter := bson.M{
-		"_id": releaseID,
-		"steps": bson.M{
-			"$not": bson.M{
-				"$elemMatch": bson.M{
-					"name": stepName,
-				},
-			},
-		},
-	}
-
-	update := bson.M{
-		"$push": bson.M{
-			"steps": step,
-		},
-		"$set": bson.M{
-			"updated_at": time.Now(),
-		},
-	}
-
-	return mongo.Repo.UpdateOne(ctx, &model.Release{}, filter, update)
+	step := model.ReleaseStep{Name: stepName, Progress: progress, Status: status, Message: message, StartTime: start, EndTime: end}
+	return mongo.Repo.UpdateOne(ctx, &releaseDoc{}, bson.M{
+		"_id":   oid,
+		"steps": bson.M{"$not": bson.M{"$elemMatch": bson.M{"name": stepName}}},
+	}, bson.M{"$push": bson.M{"steps": step}, "$set": bson.M{"updated_at": time.Now()}})
 }
 
 func findReleaseStep(steps []model.ReleaseStep, stepName string) *model.ReleaseStep {
@@ -395,7 +266,7 @@ func applyReleaseStepUpdate(steps []model.ReleaseStep, stepName string, status m
 	}
 }
 
-func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID primitive.ObjectID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
+func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID uuid.UUID, releaseAction string, currentStatus model.ReleaseStatus, steps []model.ReleaseStep) error {
 	nextStatus := model.DeriveReleaseStatusFromSteps(releaseAction, currentStatus, steps)
 	if nextStatus == currentStatus {
 		return nil
@@ -405,17 +276,48 @@ func (s *releaseService) updateStatusFromSteps(ctx context.Context, releaseID pr
 
 func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) error {
 	log := logging.LoggerWithContext(ctx)
-	var err error
-	application := release.GenerateApplication()
+	app, err := ApplicationService.Get(ctx, release.ApplicationID)
+	if err != nil {
+		return err
+	}
+	manifestRepo := model.GetConfigRepo()
+	manifestID := release.ManifestID.String()
+	releaseID := release.ID.String()
+	name := app.Name
+	if name == "" {
+		name = release.ApplicationID.String()
+	}
+	namespace := app.ProjectName
+	if namespace == "" {
+		namespace = "default"
+	}
+
+	application := &appv1.Application{
+		TypeMeta:   metav1.TypeMeta{Kind: "Application", APIVersion: "argoproj.io/v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: appv1.ApplicationSpec{
+			Project: "app",
+			Source: &appv1.ApplicationSource{
+				RepoURL: manifestRepo.Address,
+				Path:    "./",
+				Plugin: &appv1.ApplicationSourcePlugin{
+					Name: "plugin",
+					Parameters: []appv1.ApplicationSourcePluginParameter{
+						{Name: "env", String_: &release.Env},
+						{Name: "manifest-id", String_: &manifestID},
+						{Name: "release-id", String_: &releaseID},
+					},
+				},
+			},
+			Destination: appv1.ApplicationDestination{Server: "https://kubernetes.default.svc", Namespace: namespace},
+		},
+	}
 	sc := trace.SpanContextFromContext(ctx)
 	application.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
 		model.SpanAnnotation:    sc.SpanID().String(),
 	}
-	application.Labels = map[string]string{
-		"status":             string(model.ReleaseRunning),
-		model.ReleaseIDLabel: release.ID.Hex(),
-	}
+	application.Labels = map[string]string{"status": string(model.ReleaseRunning), model.ReleaseIDLabel: release.ID.String()}
 
 	switch release.Type {
 	case model.ReleaseInstall:
@@ -428,36 +330,15 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 	default:
 		err = errors.New("unknown release type")
 	}
-
 	if err != nil {
-		log.Error("argo sync failed",
-			zap.String("release_id", release.ID.Hex()),
-			zap.String("type", release.Type),
-			zap.Error(err),
-		)
+		log.Error("argo sync failed", zap.String("release_id", release.ID.String()), zap.String("type", release.Type), zap.Error(err))
 		return err
 	}
-
-	log.Info("argo sync triggered",
-		zap.String("release_id", release.ID.Hex()),
-	)
 	return nil
 }
 
 func (s *releaseService) syncArgoApplication(ctx context.Context, appName string) error {
-	log := logging.LoggerWithContext(ctx).With(
-		zap.String("application.name", appName),
-	)
-
 	applications := argo.ArgoCdClient.ArgoprojV1alpha1().Applications("argocd")
-	_, err := argoutil.SetAppOperation(applications, appName, &appv1.Operation{
-		Sync: &appv1.SyncOperation{},
-	})
-	if err != nil {
-		log.Error("argo application sync failed", zap.Error(err))
-		return err
-	}
-
-	log.Info("argo application sync triggered")
-	return nil
+	_, err := argoutil.SetAppOperation(applications, appName, &appv1.Operation{Sync: &appv1.SyncOperation{}})
+	return err
 }

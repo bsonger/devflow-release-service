@@ -2,12 +2,14 @@ package api
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
-	"net/http"
 )
 
 var ManifestRouteApi = NewManifestHandler()
@@ -58,12 +60,17 @@ func (h *ManifestHandler) List(c *gin.Context) {
 		filter["deleted_at"] = primitive.M{"$exists": false}
 	}
 	if appID := c.Query("application_id"); appID != "" {
-		id, err := primitive.ObjectIDFromHex(appID)
+		id, err := uuid.Parse(appID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
 			return
 		}
-		filter["application_id"] = id
+		oid, err := service.BridgeUUIDToObjectID(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
+			return
+		}
+		filter["application_id"] = oid
 	}
 	if pipelineID := c.Query("pipeline_id"); pipelineID != "" {
 		filter["pipeline_id"] = pipelineID
@@ -104,7 +111,7 @@ func (h *ManifestHandler) List(c *gin.Context) {
 // @Success	200	{object}	model.Manifest
 // @Router		/api/v1/manifests/{id} [get]
 func (h *ManifestHandler) Get(c *gin.Context) {
-	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -135,7 +142,7 @@ func (h *ManifestHandler) Get(c *gin.Context) {
 func (h *ManifestHandler) Patch(c *gin.Context) {
 
 	// 1️⃣ 解析 ID
-	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -168,6 +175,6 @@ func (h *ManifestHandler) Patch(c *gin.Context) {
 	// 4️⃣ 返回成功
 	c.JSON(http.StatusOK, gin.H{
 		"message": "patched",
-		"id":      id.Hex(),
+		"id":      id.String(),
 	})
 }

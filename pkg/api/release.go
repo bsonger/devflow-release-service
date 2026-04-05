@@ -6,6 +6,7 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
@@ -49,7 +50,7 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 // @Success 200 {object} model.Release
 // @Router /api/v1/releases/{id} [get]
 func (h *ReleaseHandler) Get(c *gin.Context) {
-	id, err := primitive.ObjectIDFromHex(c.Param("id"))
+	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
 		return
@@ -75,20 +76,30 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 		filter["deleted_at"] = primitive.M{"$exists": false}
 	}
 	if appID := c.Query("application_id"); appID != "" {
-		id, err := primitive.ObjectIDFromHex(appID)
+		id, err := uuid.Parse(appID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
 			return
 		}
-		filter["application_id"] = id
+		oid, err := service.BridgeUUIDToObjectID(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
+			return
+		}
+		filter["application_id"] = oid
 	}
 	if manifestID := c.Query("manifest_id"); manifestID != "" {
-		id, err := primitive.ObjectIDFromHex(manifestID)
+		id, err := uuid.Parse(manifestID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
 			return
 		}
-		filter["manifest_id"] = id
+		oid, err := service.BridgeUUIDToObjectID(id)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
+			return
+		}
+		filter["manifest_id"] = oid
 	}
 	if status := c.Query("status"); status != "" {
 		filter["status"] = status
@@ -96,13 +107,6 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 	if releaseType := c.Query("type"); releaseType != "" {
 		filter["type"] = releaseType
 	}
-	if projectName := c.Query("project_name"); projectName != "" {
-		filter["project_name"] = projectName
-	}
-	if appName := c.Query("application_name"); appName != "" {
-		filter["application_name"] = appName
-	}
-
 	releases, err := service.ReleaseService.List(c.Request.Context(), filter)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
