@@ -2,15 +2,14 @@ package config
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
-	"github.com/bsonger/devflow-common/client/argo"
-	"github.com/bsonger/devflow-common/client/logging"
-	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-common/client/tekton"
-	commonModel "github.com/bsonger/devflow-common/model"
+	"github.com/bsonger/devflow-release-service/pkg/argoclient"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/bsonger/devflow-release-service/pkg/telemetry"
+	"github.com/bsonger/devflow-service-common/loggingx"
 	"net/http"
 	"strings"
 
@@ -26,13 +25,13 @@ import (
 )
 
 type Config struct {
-	Server    *model.ServerConfig `mapstructure:"server" json:"server" yaml:"server"`
-	Mongo     *model.MongoConfig  `mapstructure:"mongo"  json:"mongo"  yaml:"mongo"`
-	Log       *model.LogConfig    `mapstructure:"log"    json:"log"    yaml:"log"`
-	Otel      *model.OtelConfig   `mapstructure:"otel"   json:"otel"   yaml:"otel"`
-	Repo      *model.Repo         `mapstructure:"repo"   json:"repo"   yaml:"repo"`
-	Consul    *model.Consul       `mapstructure:"consul" json:"consul" yaml:"consul"`
-	Pyroscope string              `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
+	Server    *model.ServerConfig   `mapstructure:"server" json:"server" yaml:"server"`
+	Postgres  *model.PostgresConfig `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
+	Log       *model.LogConfig      `mapstructure:"log" json:"log" yaml:"log"`
+	Otel      *model.OtelConfig     `mapstructure:"otel" json:"otel" yaml:"otel"`
+	Repo      *model.Repo           `mapstructure:"repo" json:"repo" yaml:"repo"`
+	Consul    *model.Consul         `mapstructure:"consul" json:"consul" yaml:"consul"`
+	Pyroscope string                `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
 
 func Load() (*Config, error) {
@@ -75,35 +74,41 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 		return nil, err
 	}
 
-	client, err := mongo.InitMongo(ctx, toCommonMongoConfig(config.Mongo), logging.Logger)
+	db, err := sql.Open("pgx", stringValue(config.Postgres, func(v *model.PostgresConfig) string { return v.DSN }))
 	if err != nil {
 		return shutdown, err
 	}
-	store.InitMongo(client, config.Mongo.DBName)
+	store.ApplyPool(db,
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.MaxOpenConns }),
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.MaxIdleConns }),
+		intValue(config.Postgres, func(v *model.PostgresConfig) int { return v.ConnMaxLifetimeMinutes }),
+	)
+	if err := db.PingContext(ctx); err != nil {
+		_ = db.Close()
+		return shutdown, err
+	}
+	store.InitPostgres(db)
 	kubeconfig, err := LoadKubeConfig()
 	if err != nil {
 		return shutdown, err
 	}
-	err = tekton.InitTektonClient(ctx, kubeconfig, logging.Logger)
+	err = tekton.InitTektonClient(ctx, kubeconfig, loggingx.Logger)
 	if err != nil {
 		return shutdown, err
 	}
-	err = argo.InitArgoCdClient(kubeconfig)
+	err = argoclient.Init(kubeconfig)
 	if err != nil {
 		return shutdown, err
 	}
 	model.InitConfigRepo(config.Repo)
-	return shutdown, nil
-}
-
-func toCommonMongoConfig(cfg *model.MongoConfig) *commonModel.MongoConfig {
-	if cfg == nil {
-		return nil
-	}
-	return &commonModel.MongoConfig{
-		URI:    cfg.URI,
-		DBName: cfg.DBName,
-	}
+	return func(shutdownCtx context.Context) error {
+		closeErr := db.Close()
+		shutdownErr := shutdown(shutdownCtx)
+		if shutdownErr != nil {
+			return shutdownErr
+		}
+		return closeErr
+	}, nil
 }
 
 func LoadKubeConfig() (*rest.Config, error) {
@@ -158,4 +163,18 @@ func wrapK8sTransport() func(http.RoundTripper) http.RoundTripper {
 			}),
 		)
 	}
+}
+
+func stringValue[T any](value *T, getter func(*T) string) string {
+	if value == nil {
+		return ""
+	}
+	return getter(value)
+}
+
+func intValue[T any](value *T, getter func(*T) int) int {
+	if value == nil {
+		return 0
+	}
+	return getter(value)
 }

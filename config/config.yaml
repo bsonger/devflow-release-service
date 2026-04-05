@@ -1,8 +1,10 @@
 server:
   port: 8080
-mongo:
-  uri: "mongodb://devflow:devflow@192.168.1.2:32282/devflow?authSource=devflow"
-  db: "devflow"
+postgres:
+  dsn: "postgres://devflow:devflow@192.168.1.2:32282/devflow?sslmode=disable"
+  max_open_conns: 20
+  max_idle_conns: 10
+  conn_max_lifetime_minutes: 30
 log:
   level: "info"
   format: "json"   # json | console

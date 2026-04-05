@@ -7,7 +7,6 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var ReleaseRouteApi = NewReleaseHandler()
@@ -71,22 +70,14 @@ func (h *ReleaseHandler) Get(c *gin.Context) {
 // @Success 200 {array} model.Release
 // @Router /api/v1/releases [get]
 func (h *ReleaseHandler) List(c *gin.Context) {
-	filter := primitive.M{}
-	if !includeDeleted(c) {
-		filter["deleted_at"] = primitive.M{"$exists": false}
-	}
+	filter := service.ReleaseListFilter{IncludeDeleted: includeDeleted(c)}
 	if appID := c.Query("application_id"); appID != "" {
 		id, err := uuid.Parse(appID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
 			return
 		}
-		oid, err := service.BridgeUUIDToObjectID(id)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
-			return
-		}
-		filter["application_id"] = oid
+		filter.ApplicationID = &id
 	}
 	if manifestID := c.Query("manifest_id"); manifestID != "" {
 		id, err := uuid.Parse(manifestID)
@@ -94,18 +85,13 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
 			return
 		}
-		oid, err := service.BridgeUUIDToObjectID(id)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
-			return
-		}
-		filter["manifest_id"] = oid
+		filter.ManifestID = &id
 	}
 	if status := c.Query("status"); status != "" {
-		filter["status"] = status
+		filter.Status = status
 	}
 	if releaseType := c.Query("type"); releaseType != "" {
-		filter["type"] = releaseType
+		filter.Type = releaseType
 	}
 	releases, err := service.ReleaseService.List(c.Request.Context(), filter)
 	if err != nil {

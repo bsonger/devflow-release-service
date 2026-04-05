@@ -9,7 +9,6 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
 var IntentRouteApi = NewIntentHandler()
@@ -78,59 +77,59 @@ func (h *IntentHandler) Get(c *gin.Context) {
 	c.JSON(http.StatusOK, intent)
 }
 
-func buildIntentFilter(c *gin.Context) (primitive.M, error) {
-	filter := primitive.M{}
+func buildIntentFilter(c *gin.Context) (service.IntentListFilter, error) {
+	filter := service.IntentListFilter{}
 
 	if kind := strings.TrimSpace(c.Query("kind")); kind != "" {
-		filter["kind"] = model.IntentKind(kind)
+		filter.Kind = string(model.IntentKind(kind))
 	}
 	if status := strings.TrimSpace(c.Query("status")); status != "" {
-		filter["status"] = model.IntentStatus(status)
+		filter.Status = string(model.IntentStatus(status))
 	}
 	if resourceType := strings.TrimSpace(c.Query("resource_type")); resourceType != "" {
-		filter["resource_type"] = resourceType
+		filter.ResourceType = resourceType
 	}
 	releaseType := strings.TrimSpace(c.Query("release_type"))
 	if releaseType == "" {
 		releaseType = strings.TrimSpace(c.Query("job_type"))
 	}
 	if releaseType != "" {
-		filter["release_type"] = releaseType
+		filter.ReleaseType = releaseType
 	}
 	if env := strings.TrimSpace(c.Query("env")); env != "" {
-		filter["env"] = env
+		filter.Env = env
 	}
 	if branch := strings.TrimSpace(c.Query("branch")); branch != "" {
-		filter["branch"] = branch
+		filter.Branch = branch
 	}
 	if claimedBy := strings.TrimSpace(c.Query("claimed_by")); claimedBy != "" {
-		filter["claimed_by"] = claimedBy
+		filter.ClaimedBy = claimedBy
 	}
 	if externalRef := strings.TrimSpace(c.Query("external_ref")); externalRef != "" {
-		filter["external_ref"] = externalRef
+		filter.ExternalRef = externalRef
 	}
 
-	if err := setObjectIDFilter(filter, "resource_id", c.Query("resource_id")); err != nil {
-		return nil, err
+	if err := setUUIDFilter(&filter.ResourceID, "resource_id", c.Query("resource_id")); err != nil {
+		return service.IntentListFilter{}, err
 	}
-	if err := setObjectIDFilter(filter, "application_id", c.Query("application_id")); err != nil {
-		return nil, err
+	if err := setUUIDFilter(&filter.ApplicationID, "application_id", c.Query("application_id")); err != nil {
+		return service.IntentListFilter{}, err
 	}
-	if err := setObjectIDFilter(filter, "manifest_id", c.Query("manifest_id")); err != nil {
-		return nil, err
+	if err := setUUIDFilter(&filter.ManifestID, "manifest_id", c.Query("manifest_id")); err != nil {
+		return service.IntentListFilter{}, err
 	}
 	releaseID := c.Query("release_id")
 	if releaseID == "" {
 		releaseID = c.Query("job_id")
 	}
-	if err := setObjectIDFilter(filter, "release_id", releaseID); err != nil {
-		return nil, err
+	if err := setUUIDFilter(&filter.ReleaseID, "release_id", releaseID); err != nil {
+		return service.IntentListFilter{}, err
 	}
 
 	return filter, nil
 }
 
-func setObjectIDFilter(filter primitive.M, field, raw string) error {
+func setUUIDFilter(target **uuid.UUID, field, raw string) error {
 	value := strings.TrimSpace(raw)
 	if value == "" {
 		return nil
@@ -140,10 +139,6 @@ func setObjectIDFilter(filter primitive.M, field, raw string) error {
 	if err != nil {
 		return fmt.Errorf("invalid %s", field)
 	}
-	oid, err := service.BridgeUUIDToObjectID(id)
-	if err != nil {
-		return fmt.Errorf("invalid %s", field)
-	}
-	filter[field] = oid
+	*target = &id
 	return nil
 }

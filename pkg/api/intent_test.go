@@ -6,20 +6,16 @@ import (
 	"testing"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
-	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
-	"go.mongodb.org/mongo-driver/bson/primitive"
+	"github.com/google/uuid"
 )
 
 func TestBuildIntentFilter(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	applicationID := service.BridgeObjectIDToUUID(primitive.NewObjectID())
-	manifestID := service.BridgeObjectIDToUUID(primitive.NewObjectID())
-	resourceID := service.BridgeObjectIDToUUID(primitive.NewObjectID())
-	applicationOID, _ := service.BridgeUUIDToObjectID(applicationID)
-	manifestOID, _ := service.BridgeUUIDToObjectID(manifestID)
-	resourceOID, _ := service.BridgeUUIDToObjectID(resourceID)
+	applicationID := uuid.New()
+	manifestID := uuid.New()
+	resourceID := uuid.New()
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
@@ -33,25 +29,25 @@ func TestBuildIntentFilter(t *testing.T) {
 		t.Fatalf("buildIntentFilter returned error: %v", err)
 	}
 
-	if got := filter["kind"]; got != model.IntentKindBuild {
+	if got := filter.Kind; got != string(model.IntentKindBuild) {
 		t.Fatalf("unexpected kind: got %#v want %#v", got, model.IntentKindBuild)
 	}
-	if got := filter["status"]; got != model.IntentPending {
+	if got := filter.Status; got != string(model.IntentPending) {
 		t.Fatalf("unexpected status: got %#v want %#v", got, model.IntentPending)
 	}
-	if got := filter["application_id"]; got != applicationOID {
-		t.Fatalf("unexpected application_id: got %#v want %#v", got, applicationOID)
+	if filter.ApplicationID == nil || *filter.ApplicationID != applicationID {
+		t.Fatalf("unexpected application_id: got %#v want %#v", filter.ApplicationID, applicationID)
 	}
-	if got := filter["manifest_id"]; got != manifestOID {
-		t.Fatalf("unexpected manifest_id: got %#v want %#v", got, manifestOID)
+	if filter.ManifestID == nil || *filter.ManifestID != manifestID {
+		t.Fatalf("unexpected manifest_id: got %#v want %#v", filter.ManifestID, manifestID)
 	}
-	if got := filter["resource_id"]; got != resourceOID {
-		t.Fatalf("unexpected resource_id: got %#v want %#v", got, resourceOID)
+	if filter.ResourceID == nil || *filter.ResourceID != resourceID {
+		t.Fatalf("unexpected resource_id: got %#v want %#v", filter.ResourceID, resourceID)
 	}
-	if got := filter["claimed_by"]; got != "worker-1" {
+	if got := filter.ClaimedBy; got != "worker-1" {
 		t.Fatalf("unexpected claimed_by: got %#v want %q", got, "worker-1")
 	}
-	if got := filter["branch"]; got != "main" {
+	if got := filter.Branch; got != "main" {
 		t.Fatalf("unexpected branch: got %#v want %q", got, "main")
 	}
 }
@@ -75,8 +71,7 @@ func TestBuildIntentFilterInvalidObjectID(t *testing.T) {
 func TestBuildIntentFilterReleaseIDAlias(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 
-	releaseID := service.BridgeObjectIDToUUID(primitive.NewObjectID())
-	releaseOID, _ := service.BridgeUUIDToObjectID(releaseID)
+	releaseID := uuid.New()
 
 	recorder := httptest.NewRecorder()
 	ctx, _ := gin.CreateTestContext(recorder)
@@ -87,14 +82,13 @@ func TestBuildIntentFilterReleaseIDAlias(t *testing.T) {
 		t.Fatalf("buildIntentFilter returned error: %v", err)
 	}
 
-	gotReleaseID, ok := filter["release_id"]
-	if !ok {
+	if filter.ReleaseID == nil {
 		t.Fatalf("expected release_id filter to be set")
 	}
-	if got := filter["release_type"]; got != "Upgrade" {
+	if got := filter.ReleaseType; got != "Upgrade" {
 		t.Fatalf("unexpected release_type filter: got %#v want %q", got, "Upgrade")
 	}
-	if gotReleaseID != releaseOID {
-		t.Fatalf("unexpected release_id filter: got %#v want %#v", gotReleaseID, releaseOID)
+	if *filter.ReleaseID != releaseID {
+		t.Fatalf("unexpected release_id filter: got %#v want %#v", *filter.ReleaseID, releaseID)
 	}
 }

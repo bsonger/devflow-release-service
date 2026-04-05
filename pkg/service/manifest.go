@@ -2,18 +2,18 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/logging"
-	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-common/client/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
+	"github.com/bsonger/devflow-release-service/pkg/store"
+	"github.com/bsonger/devflow-service-common/loggingx"
 	"github.com/google/uuid"
 	v1 "github.com/tektoncd/pipeline/pkg/apis/pipeline/v1"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.opentelemetry.io/otel/codes"
 	"go.opentelemetry.io/otel/trace"
 	"go.uber.org/zap"
@@ -26,7 +26,7 @@ const namespace = "tekton-pipelines"
 type manifestService struct{}
 
 func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest) (uuid.UUID, error) {
-	logger := logging.LoggerFromContext(ctx)
+	logger := loggingx.LoggerFromContext(ctx)
 	logger.Info("create manifest start",
 		zap.String("application_id", m.ApplicationID.String()),
 		zap.String("branch", m.Branch),
@@ -59,14 +59,9 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 	}
 
 	if runtime.IsIntentMode() {
-		doc, err := manifestToDoc(m)
-		if err != nil {
+		if err := s.insert(ctx, m); err != nil {
 			return uuid.Nil, err
 		}
-		if err := mongo.Repo.Create(ctx, doc); err != nil {
-			return uuid.Nil, err
-		}
-		m.ID = bridgeObjectIDToUUID(doc.ID)
 		intentID, err := IntentService.CreateBuildIntent(ctx, m)
 		if err != nil {
 			return m.ID, err
@@ -78,17 +73,29 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 	if err := s.submitBuild(ctx, m); err != nil {
 		return uuid.Nil, err
 	}
-	doc, err := manifestToDoc(m)
-	if err != nil {
+	if err := s.insert(ctx, m); err != nil {
 		return uuid.Nil, err
 	}
-	if err := mongo.Repo.Create(ctx, doc); err != nil {
-		return uuid.Nil, err
-	}
-	m.ID = bridgeObjectIDToUUID(doc.ID)
 
 	logger.Info("create manifest success", zap.String("manifest", m.Name), zap.String("pipelineRun", m.PipelineID))
 	return m.ID, nil
+}
+
+func (s *manifestService) insert(ctx context.Context, m *model.Manifest) error {
+	servicesJSON, err := marshalJSON(m.Services, "[]")
+	if err != nil {
+		return err
+	}
+	stepsJSON, err := marshalJSON(m.Steps, "[]")
+	if err != nil {
+		return err
+	}
+	_, err = store.DB().ExecContext(ctx, `
+		insert into manifests (
+			id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Replica, m.Digest, m.Type, servicesJSON, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
+	return err
 }
 
 func (s *manifestService) DispatchBuild(ctx context.Context, manifestID uuid.UUID) error {
@@ -99,21 +106,11 @@ func (s *manifestService) DispatchBuild(ctx context.Context, manifestID uuid.UUI
 	if err := s.submitBuild(ctx, manifest); err != nil {
 		return err
 	}
-	oid, err := bridgeUUIDToObjectID(manifestID)
-	if err != nil {
-		return err
-	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, oid, bson.M{
-		"$set": bson.M{
-			"pipeline_id": manifest.PipelineID,
-			"steps":       manifest.Steps,
-			"updated_at":  time.Now(),
-		},
-	})
+	return s.updatePipelineAndSteps(ctx, manifest.ID, manifest.PipelineID, manifest.Steps)
 }
 
 func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) error {
-	logger := logging.LoggerFromContext(ctx)
+	logger := loggingx.LoggerFromContext(ctx)
 
 	pvc, err := tekton.CreatePVC(ctx, namespace, "devflow-ci", "local-path", "1Gi")
 	if err != nil {
@@ -161,90 +158,141 @@ func (s *manifestService) Update(ctx context.Context, m *model.Manifest) error {
 	m.CreatedAt = current.CreatedAt
 	m.DeletedAt = current.DeletedAt
 	m.WithUpdateDefault()
-	doc, err := manifestToDoc(m)
-	if err != nil {
-		return err
-	}
-	oid, err := bridgeUUIDToObjectID(m.ID)
-	if err != nil {
-		return err
-	}
-	doc.ID = oid
-	return mongo.Repo.Update(ctx, doc)
+	return s.updateRow(ctx, m)
 }
 
-func (s *manifestService) List(ctx context.Context, filter primitive.M) ([]model.Manifest, error) {
-	var docs []manifestDoc
-	if err := mongo.Repo.List(ctx, &manifestDoc{}, filter, &docs); err != nil {
+func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) ([]model.Manifest, error) {
+	query := `
+		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		from manifests
+	`
+	clauses := make([]string, 0, 6)
+	args := make([]any, 0, 6)
+	if !filter.IncludeDeleted {
+		clauses = append(clauses, "deleted_at is null")
+	}
+	if filter.ApplicationID != nil {
+		args = append(args, *filter.ApplicationID)
+		clauses = append(clauses, placeholderClause("application_id", len(args)))
+	}
+	if filter.PipelineID != "" {
+		args = append(args, filter.PipelineID)
+		clauses = append(clauses, placeholderClause("pipeline_id", len(args)))
+	}
+	if filter.Status != "" {
+		args = append(args, filter.Status)
+		clauses = append(clauses, placeholderClause("status", len(args)))
+	}
+	if filter.Branch != "" {
+		args = append(args, filter.Branch)
+		clauses = append(clauses, placeholderClause("branch", len(args)))
+	}
+	if filter.Name != "" {
+		args = append(args, filter.Name)
+		clauses = append(clauses, placeholderClause("name", len(args)))
+	}
+	if len(clauses) > 0 {
+		query += " where " + strings.Join(clauses, " and ")
+	}
+	query += " order by created_at desc"
+
+	rows, err := store.DB().QueryContext(ctx, query, args...)
+	if err != nil {
 		return nil, err
 	}
-	out := make([]model.Manifest, 0, len(docs))
-	for i := range docs {
-		out = append(out, manifestFromDoc(&docs[i]))
+	defer rows.Close()
+	out := make([]model.Manifest, 0)
+	for rows.Next() {
+		item, err := scanManifest(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *item)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
 
 func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
-	oid, err := bridgeUUIDToObjectID(id)
-	if err != nil {
-		return nil, err
-	}
-	doc := &manifestDoc{}
-	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
-		return nil, err
-	}
-	m := manifestFromDoc(doc)
-	return &m, nil
+	return scanManifest(store.DB().QueryRowContext(ctx, `
+		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		from manifests
+		where id = $1 and deleted_at is null
+	`, id))
 }
 
 func (s *manifestService) AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error {
 	if manifestID == uuid.Nil {
 		return errors.New("manifest id cannot be zero")
 	}
-	oid, err := bridgeUUIDToObjectID(manifestID)
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set pipeline_id = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, manifestID, pipelineID, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, oid, bson.M{"$set": bson.M{"pipeline_id": pipelineID, "updated_at": time.Now()}})
+	return ensureRowsAffected(result)
 }
 
 func (s *manifestService) UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error {
 	if manifestID == uuid.Nil {
 		return errors.New("manifest id cannot be zero")
 	}
-	oid, err := bridgeUUIDToObjectID(manifestID)
+	current, err := s.Get(ctx, manifestID)
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, oid, bson.M{"$set": bson.M{"status": status, "updated_at": time.Now()}})
+	current.Status = status
+	current.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, current.ID, current.Status, current.Steps, current.PipelineID)
 }
 
 func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
-	update := bson.M{"steps.$.status": status, "steps.$.message": message, "updated_at": time.Now()}
-	if start != nil {
-		update["steps.$.start_time"] = *start
+	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
+	if err != nil {
+		return err
 	}
-	if end != nil {
-		update["steps.$.end_time"] = *end
+	changed := false
+	for i := range manifest.Steps {
+		if manifest.Steps[i].TaskName != taskName {
+			continue
+		}
+		if manifest.Steps[i].Status == model.StepFailed || manifest.Steps[i].Status == model.StepSucceeded || manifest.Steps[i].Status == status {
+			return nil
+		}
+		manifest.Steps[i].Status = status
+		manifest.Steps[i].Message = message
+		if start != nil {
+			manifest.Steps[i].StartTime = start
+		}
+		if end != nil {
+			manifest.Steps[i].EndTime = end
+		}
+		changed = true
+		break
 	}
-	filter := bson.M{
-		"pipeline_id": pipelineID,
-		"steps": bson.M{
-			"$elemMatch": bson.M{
-				"task_name": taskName,
-				"status":    bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded, status}},
-			},
-		},
+	if !changed {
+		return nil
 	}
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, filter, bson.M{"$set": update})
+	manifest.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
 }
 
 func (s *manifestService) UpdateManifestStatus(ctx context.Context, pipelineID string, status model.ManifestStatus) error {
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, bson.M{
-		"pipeline_id": pipelineID,
-		"status":      bson.M{"$nin": []model.ManifestStatus{model.ManifestFailed, model.ManifestSucceeded, status}},
-	}, bson.M{"$set": bson.M{"status": status, "updated_at": time.Now()}})
+	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
+	if err != nil {
+		return err
+	}
+	if manifest.Status == model.ManifestFailed || manifest.Status == model.ManifestSucceeded || manifest.Status == status {
+		return nil
+	}
+	manifest.Status = status
+	manifest.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
 }
 
 func BuildStepsFromPipeline(pipeline *v1.Pipeline) []model.ManifestStep {
@@ -259,42 +307,114 @@ func BuildStepsFromPipeline(pipeline *v1.Pipeline) []model.ManifestStep {
 }
 
 func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, bson.M{
-		"pipeline_id": pipelineID,
-		"steps": bson.M{
-			"$elemMatch": bson.M{
-				"task_name": taskName,
-				"task_run":  bson.M{"$exists": false},
-				"status":    bson.M{"$nin": []model.StepStatus{model.StepFailed, model.StepSucceeded}},
-			},
-		},
-	}, bson.M{"$set": bson.M{"steps.$.task_run": taskRun, "updated_at": time.Now()}})
-}
-
-func (s *manifestService) GetManifestByPipelineID(ctx context.Context, pipelineID string) (*model.Manifest, error) {
-	var doc manifestDoc
-	if err := mongo.Repo.FindOne(ctx, &doc, bson.M{"pipeline_id": pipelineID}); err != nil {
-		return nil, err
-	}
-	m := manifestFromDoc(&doc)
-	return &m, nil
-}
-
-func (s *manifestService) Patch(ctx context.Context, id uuid.UUID, patch *model.PatchManifestRequest) error {
-	oid, err := bridgeUUIDToObjectID(id)
+	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
 	if err != nil {
 		return err
 	}
-	set := bson.M{}
-	if patch.Digest != "" {
-		set["digest"] = patch.Digest
+	changed := false
+	for i := range manifest.Steps {
+		if manifest.Steps[i].TaskName != taskName {
+			continue
+		}
+		if manifest.Steps[i].TaskRun != "" || manifest.Steps[i].Status == model.StepFailed || manifest.Steps[i].Status == model.StepSucceeded {
+			return nil
+		}
+		manifest.Steps[i].TaskRun = taskRun
+		changed = true
+		break
 	}
-	if patch.CommitHash != "" {
-		set["commit_hash"] = patch.CommitHash
-	}
-	if len(set) == 0 {
+	if !changed {
 		return nil
 	}
-	set["updated_at"] = time.Now()
-	return mongo.Repo.UpdateOne(ctx, &manifestDoc{}, bson.M{"_id": oid}, bson.M{"$set": set})
+	manifest.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
+}
+
+func (s *manifestService) GetManifestByPipelineID(ctx context.Context, pipelineID string) (*model.Manifest, error) {
+	return scanManifest(store.DB().QueryRowContext(ctx, `
+		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		from manifests
+		where pipeline_id = $1 and deleted_at is null
+	`, pipelineID))
+}
+
+func (s *manifestService) Patch(ctx context.Context, id uuid.UUID, patch *model.PatchManifestRequest) error {
+	if patch == nil || patch.IsEmpty() {
+		return nil
+	}
+	manifest, err := s.Get(ctx, id)
+	if err != nil {
+		return err
+	}
+	if patch.Digest != "" {
+		manifest.Digest = patch.Digest
+	}
+	if patch.CommitHash != "" {
+		manifest.CommitHash = patch.CommitHash
+	}
+	manifest.UpdatedAt = time.Now()
+	return s.updateRow(ctx, manifest)
+}
+
+func (s *manifestService) updatePipelineAndSteps(ctx context.Context, id uuid.UUID, pipelineID string, steps []model.ManifestStep) error {
+	stepsJSON, err := marshalJSON(steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set pipeline_id = $2, steps = $3, updated_at = $4
+		where id = $1 and deleted_at is null
+	`, id, pipelineID, stepsJSON, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
+}
+
+func (s *manifestService) updateStatusAndSteps(ctx context.Context, id uuid.UUID, status model.ManifestStatus, steps []model.ManifestStep, pipelineID string) error {
+	stepsJSON, err := marshalJSON(steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set status = $2, steps = $3, pipeline_id = $4, updated_at = $5
+		where id = $1 and deleted_at is null
+	`, id, status, stepsJSON, pipelineID, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
+}
+
+func (s *manifestService) updateRow(ctx context.Context, m *model.Manifest) error {
+	servicesJSON, err := marshalJSON(m.Services, "[]")
+	if err != nil {
+		return err
+	}
+	stepsJSON, err := marshalJSON(m.Steps, "[]")
+	if err != nil {
+		return err
+	}
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set execution_intent_id=$2, application_id=$3, name=$4, branch=$5, repo_address=$6, commit_hash=$7, replica=$8, digest=$9, type=$10, services=$11, pipeline_id=$12, steps=$13, status=$14, updated_at=$15, deleted_at=$16
+		where id = $1
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Replica, m.Digest, m.Type, servicesJSON, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
+}
+
+func ensureRowsAffected(result sql.Result) error {
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }

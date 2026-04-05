@@ -2,18 +2,15 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
+	"strings"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/logging"
-	"github.com/bsonger/devflow-common/client/mongo"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/store"
+	"github.com/bsonger/devflow-service-common/loggingx"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	mongoDriver "go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.uber.org/zap"
 )
 
@@ -35,19 +32,14 @@ func (s *intentService) CreateBuildIntent(ctx context.Context, manifest *model.M
 		Branch:        manifest.Branch,
 	}
 	intent.WithCreateDefault()
-	doc, err := intentToDoc(intent)
-	if err != nil {
+	if err := s.insert(ctx, intent); err != nil {
 		return uuid.Nil, err
 	}
-	if err := mongo.Repo.Create(ctx, doc); err != nil {
-		return uuid.Nil, err
-	}
-	intent.ID = bridgeObjectIDToUUID(doc.ID)
 	if err := s.bindIntentToManifest(ctx, manifest.ID, intent.ID); err != nil {
 		return intent.ID, err
 	}
 	manifest.ExecutionIntentID = uuidPtr(intent.ID)
-	logging.LoggerWithContext(ctx).Info("build intent created", zap.String("intent_id", intent.ID.String()), zap.String("manifest_id", manifest.ID.String()))
+	loggingx.LoggerWithContext(ctx).Info("build intent created", zap.String("intent_id", intent.ID.String()), zap.String("manifest_id", manifest.ID.String()))
 	return intent.ID, nil
 }
 
@@ -64,73 +56,150 @@ func (s *intentService) CreateReleaseIntent(ctx context.Context, release *model.
 		Env:           release.Env,
 	}
 	intent.WithCreateDefault()
-	doc, err := intentToDoc(intent)
-	if err != nil {
+	if err := s.insert(ctx, intent); err != nil {
 		return uuid.Nil, err
 	}
-	if err := mongo.Repo.Create(ctx, doc); err != nil {
-		return uuid.Nil, err
-	}
-	intent.ID = bridgeObjectIDToUUID(doc.ID)
 	if err := s.bindIntentToRelease(ctx, release.ID, intent.ID); err != nil {
 		return intent.ID, err
 	}
 	release.ExecutionIntentID = uuidPtr(intent.ID)
-	logging.LoggerWithContext(ctx).Info("release intent created", zap.String("intent_id", intent.ID.String()), zap.String("release_id", release.ID.String()))
+	loggingx.LoggerWithContext(ctx).Info("release intent created", zap.String("intent_id", intent.ID.String()), zap.String("release_id", release.ID.String()))
 	return intent.ID, nil
 }
 
+func (s *intentService) insert(ctx context.Context, intent *model.Intent) error {
+	_, err := store.DB().ExecContext(ctx, `
+		insert into execution_intents (
+			id, kind, status, resource_type, resource_id, application_id, manifest_id, release_id, release_type, env, repo_address, branch, external_ref, trace_id, message, last_error, claimed_by, claimed_at, lease_expires_at, attempt_count, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23)
+	`, intent.ID, intent.Kind, intent.Status, intent.ResourceType, intent.ResourceID, intent.ApplicationID, nullableUUIDPtr(intent.ManifestID), nullableUUIDPtr(intent.ReleaseID), intent.ReleaseType, intent.Env, intent.RepoAddress, intent.Branch, intent.ExternalRef, intent.TraceID, intent.Message, intent.LastError, intent.ClaimedBy, nullableTimePtr(intent.ClaimedAt), nullableTimePtr(intent.LeaseExpiresAt), intent.AttemptCount, intent.CreatedAt, intent.UpdatedAt, intent.DeletedAt)
+	return err
+}
+
 func (s *intentService) UpdateStatus(ctx context.Context, id uuid.UUID, status model.IntentStatus, externalRef, message string) error {
-	oid, err := bridgeUUIDToObjectID(id)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status=$2, external_ref=$3, message=$4, last_error='', updated_at=$5
+		where id = $1 and deleted_at is null
+	`, id, status, externalRef, message, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateByID(ctx, &intentDoc{}, oid, bson.M{"$set": bson.M{
-		"status":       status,
-		"external_ref": externalRef,
-		"message":      message,
-		"last_error":   "",
-		"updated_at":   time.Now(),
-	}})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) Get(ctx context.Context, id uuid.UUID) (*model.Intent, error) {
-	oid, err := bridgeUUIDToObjectID(id)
+	return scanIntent(store.DB().QueryRowContext(ctx, `
+		select id, kind, status, resource_type, resource_id, application_id, manifest_id, release_id, release_type, env, repo_address, branch, external_ref, trace_id, message, last_error, claimed_by, claimed_at, lease_expires_at, attempt_count, created_at, updated_at, deleted_at
+		from execution_intents
+		where id = $1 and deleted_at is null
+	`, id))
+}
+
+func (s *intentService) List(ctx context.Context, filter IntentListFilter) ([]*model.Intent, error) {
+	query := `
+		select id, kind, status, resource_type, resource_id, application_id, manifest_id, release_id, release_type, env, repo_address, branch, external_ref, trace_id, message, last_error, claimed_by, claimed_at, lease_expires_at, attempt_count, created_at, updated_at, deleted_at
+		from execution_intents
+	`
+	clauses := make([]string, 0, 12)
+	args := make([]any, 0, 12)
+	if filter.Kind != "" {
+		args = append(args, filter.Kind)
+		clauses = append(clauses, placeholderClause("kind", len(args)))
+	}
+	if filter.Status != "" {
+		args = append(args, filter.Status)
+		clauses = append(clauses, placeholderClause("status", len(args)))
+	}
+	if filter.ResourceType != "" {
+		args = append(args, filter.ResourceType)
+		clauses = append(clauses, placeholderClause("resource_type", len(args)))
+	}
+	if filter.ReleaseType != "" {
+		args = append(args, filter.ReleaseType)
+		clauses = append(clauses, placeholderClause("release_type", len(args)))
+	}
+	if filter.Env != "" {
+		args = append(args, filter.Env)
+		clauses = append(clauses, placeholderClause("env", len(args)))
+	}
+	if filter.Branch != "" {
+		args = append(args, filter.Branch)
+		clauses = append(clauses, placeholderClause("branch", len(args)))
+	}
+	if filter.ClaimedBy != "" {
+		args = append(args, filter.ClaimedBy)
+		clauses = append(clauses, placeholderClause("claimed_by", len(args)))
+	}
+	if filter.ExternalRef != "" {
+		args = append(args, filter.ExternalRef)
+		clauses = append(clauses, placeholderClause("external_ref", len(args)))
+	}
+	if filter.ResourceID != nil {
+		args = append(args, *filter.ResourceID)
+		clauses = append(clauses, placeholderClause("resource_id", len(args)))
+	}
+	if filter.ApplicationID != nil {
+		args = append(args, *filter.ApplicationID)
+		clauses = append(clauses, placeholderClause("application_id", len(args)))
+	}
+	if filter.ManifestID != nil {
+		args = append(args, *filter.ManifestID)
+		clauses = append(clauses, placeholderClause("manifest_id", len(args)))
+	}
+	if filter.ReleaseID != nil {
+		args = append(args, *filter.ReleaseID)
+		clauses = append(clauses, placeholderClause("release_id", len(args)))
+	}
+	clauses = append(clauses, "deleted_at is null")
+	query += " where " + strings.Join(clauses, " and ") + " order by created_at desc"
+
+	rows, err := store.DB().QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
 	}
-	doc := &intentDoc{}
-	if err := mongo.Repo.FindByID(ctx, doc, oid); err != nil {
-		return nil, err
+	defer rows.Close()
+	out := make([]*model.Intent, 0)
+	for rows.Next() {
+		intent, err := scanIntent(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, intent)
 	}
-	intent := intentFromDoc(doc)
-	return &intent, nil
-}
-
-func (s *intentService) List(ctx context.Context, filter primitive.M) ([]*model.Intent, error) {
-	var docs []intentDoc
-	if err := mongo.Repo.List(ctx, &intentDoc{}, filter, &docs); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, err
-	}
-	out := make([]*model.Intent, 0, len(docs))
-	for i := range docs {
-		intent := intentFromDoc(&docs[i])
-		out = append(out, &intent)
 	}
 	return out, nil
 }
 
 func (s *intentService) ListPending(ctx context.Context, limit int) ([]model.Intent, error) {
-	var docs []intentDoc
-	if err := mongo.Repo.List(ctx, &intentDoc{}, bson.M{"status": model.IntentPending}, &docs); err != nil {
+	query := `
+		select id, kind, status, resource_type, resource_id, application_id, manifest_id, release_id, release_type, env, repo_address, branch, external_ref, trace_id, message, last_error, claimed_by, claimed_at, lease_expires_at, attempt_count, created_at, updated_at, deleted_at
+		from execution_intents
+		where status = $1 and deleted_at is null
+		order by created_at asc
+	`
+	args := []any{model.IntentPending}
+	if limit > 0 {
+		query += ` limit $2`
+		args = append(args, limit)
+	}
+	rows, err := store.DB().QueryContext(ctx, query, args...)
+	if err != nil {
 		return nil, err
 	}
-	if limit > 0 && len(docs) > limit {
-		docs = docs[:limit]
+	defer rows.Close()
+	out := make([]model.Intent, 0)
+	for rows.Next() {
+		intent, err := scanIntent(rows)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, *intent)
 	}
-	out := make([]model.Intent, 0, len(docs))
-	for i := range docs {
-		out = append(out, intentFromDoc(&docs[i]))
+	if err := rows.Err(); err != nil {
+		return nil, err
 	}
 	return out, nil
 }
@@ -138,105 +207,89 @@ func (s *intentService) ListPending(ctx context.Context, limit int) ([]model.Int
 func (s *intentService) ClaimNextPending(ctx context.Context, workerID string, leaseDuration time.Duration) (*model.Intent, error) {
 	now := time.Now()
 	leaseExpiresAt := now.Add(leaseDuration)
-	filter := bson.M{
-		"status": model.IntentPending,
-		"$or": []bson.M{
-			{"claimed_by": bson.M{"$exists": false}},
-			{"claimed_by": ""},
-			{"lease_expires_at": bson.M{"$lt": now}},
-		},
-	}
-	update := bson.M{
-		"$set": bson.M{
-			"claimed_by":       workerID,
-			"claimed_at":       now,
-			"lease_expires_at": leaseExpiresAt,
-			"updated_at":       now,
-			"message":          "claimed by worker",
-		},
-		"$inc": bson.M{"attempt_count": 1},
-	}
-	opts := options.FindOneAndUpdate().SetSort(bson.D{{Key: "created_at", Value: 1}}).SetReturnDocument(options.After)
-	doc := &intentDoc{}
-	err := store.Collection(doc.CollectionName()).FindOneAndUpdate(ctx, filter, update, opts).Decode(doc)
-	if errors.Is(err, mongoDriver.ErrNoDocuments) {
+	row := store.DB().QueryRowContext(ctx, `
+		update execution_intents
+		set claimed_by = $1, claimed_at = $2, lease_expires_at = $3, updated_at = $2, message = 'claimed by worker', attempt_count = attempt_count + 1
+		where id = (
+			select id
+			from execution_intents
+			where status = $4
+			  and deleted_at is null
+			  and (claimed_by = '' or lease_expires_at is null or lease_expires_at < $2)
+			order by created_at asc
+			limit 1
+			for update skip locked
+		)
+		returning id, kind, status, resource_type, resource_id, application_id, manifest_id, release_id, release_type, env, repo_address, branch, external_ref, trace_id, message, last_error, claimed_by, claimed_at, lease_expires_at, attempt_count, created_at, updated_at, deleted_at
+	`, workerID, now, leaseExpiresAt, model.IntentPending)
+	intent, err := scanIntent(row)
+	if errors.Is(err, sql.ErrNoRows) {
 		return nil, ErrIntentNotFound
 	}
 	if err != nil {
 		return nil, err
 	}
-	intent := intentFromDoc(doc)
-	return &intent, nil
+	return intent, nil
 }
 
 func (s *intentService) MarkSubmitted(ctx context.Context, id uuid.UUID, externalRef, message string) error {
-	oid, err := bridgeUUIDToObjectID(id)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status=$2, external_ref=$3, message=$4, last_error='', updated_at=$5, claimed_by='', claimed_at=null, lease_expires_at=null
+		where id = $1 and deleted_at is null
+	`, id, model.IntentRunning, externalRef, message, time.Now())
 	if err != nil {
 		return err
 	}
-	now := time.Now()
-	return mongo.Repo.UpdateByID(ctx, &intentDoc{}, oid, bson.M{"$set": bson.M{
-		"status":           model.IntentRunning,
-		"external_ref":     externalRef,
-		"message":          message,
-		"last_error":       "",
-		"updated_at":       now,
-		"claimed_by":       "",
-		"claimed_at":       nil,
-		"lease_expires_at": nil,
-	}})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) MarkFailed(ctx context.Context, id uuid.UUID, message string) error {
-	oid, err := bridgeUUIDToObjectID(id)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status=$2, message=$3, last_error=$3, updated_at=$4, claimed_by='', claimed_at=null, lease_expires_at=null
+		where id = $1 and deleted_at is null
+	`, id, model.IntentFailed, message, time.Now())
 	if err != nil {
 		return err
 	}
-	now := time.Now()
-	return mongo.Repo.UpdateByID(ctx, &intentDoc{}, oid, bson.M{"$set": bson.M{
-		"status":           model.IntentFailed,
-		"message":          message,
-		"last_error":       message,
-		"updated_at":       now,
-		"claimed_by":       "",
-		"claimed_at":       nil,
-		"lease_expires_at": nil,
-	}})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) UpdateStatusByResource(ctx context.Context, kind model.IntentKind, resourceID uuid.UUID, status model.IntentStatus, externalRef, message string) error {
-	resourceOID, err := bridgeUUIDToObjectID(resourceID)
+	result, err := store.DB().ExecContext(ctx, `
+		update execution_intents
+		set status=$3, external_ref=$4, message=$5, updated_at=$6
+		where kind = $1 and resource_id = $2 and deleted_at is null
+	`, kind, resourceID, status, externalRef, message, time.Now())
 	if err != nil {
 		return err
 	}
-	return mongo.Repo.UpdateOne(ctx, &intentDoc{}, bson.M{
-		"kind":        kind,
-		"resource_id": resourceOID,
-	}, bson.M{"$set": bson.M{"status": status, "external_ref": externalRef, "message": message, "updated_at": time.Now()}})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) bindIntentToManifest(ctx context.Context, manifestID, intentID uuid.UUID) error {
-	manifestOID, err := bridgeUUIDToObjectID(manifestID)
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set execution_intent_id = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, manifestID, intentID, time.Now())
 	if err != nil {
 		return err
 	}
-	intentOID, err := bridgeUUIDToObjectID(intentID)
-	if err != nil {
-		return err
-	}
-	return mongo.Repo.UpdateByID(ctx, &manifestDoc{}, manifestOID, bson.M{"$set": bson.M{"execution_intent_id": intentOID, "updated_at": time.Now()}})
+	return ensureRowsAffected(result)
 }
 
 func (s *intentService) bindIntentToRelease(ctx context.Context, releaseID, intentID uuid.UUID) error {
-	releaseOID, err := bridgeUUIDToObjectID(releaseID)
+	result, err := store.DB().ExecContext(ctx, `
+		update releases
+		set execution_intent_id = $2, updated_at = $3
+		where id = $1 and deleted_at is null
+	`, releaseID, intentID, time.Now())
 	if err != nil {
 		return err
 	}
-	intentOID, err := bridgeUUIDToObjectID(intentID)
-	if err != nil {
-		return err
-	}
-	return mongo.Repo.UpdateByID(ctx, &releaseDoc{}, releaseOID, bson.M{"$set": bson.M{"execution_intent_id": intentOID, "updated_at": time.Now()}})
+	return ensureRowsAffected(result)
 }
 
 func uuidPtr(id uuid.UUID) *uuid.UUID {

@@ -4,8 +4,8 @@ import (
 	"context"
 	"testing"
 
-	"github.com/bsonger/devflow-common/client/logging"
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-service-common/loggingx"
 	sdktrace "go.opentelemetry.io/otel/sdk/trace"
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -37,7 +37,7 @@ func TestStartSpanReinjectsLoggerWithTraceFields(t *testing.T) {
 	core, observed := observer.New(zapcore.InfoLevel)
 	base := zap.New(core)
 
-	ctx := logging.InjectLogger(context.Background(), base)
+	ctx := loggingx.InjectLogger(context.Background(), base)
 
 	tp := sdktrace.NewTracerProvider()
 	t.Cleanup(func() {
@@ -47,7 +47,7 @@ func TestStartSpanReinjectsLoggerWithTraceFields(t *testing.T) {
 	ctx, span := StartSpan(ctx, tp.Tracer("test"), "test-span")
 	defer span.End()
 
-	logging.LoggerFromContext(ctx).Info("inside-span")
+	loggingx.LoggerFromContext(ctx).Info("inside-span")
 
 	entries := observed.AllUntimed()
 	if len(entries) != 1 {

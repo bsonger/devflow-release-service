@@ -18,9 +18,11 @@ type ServerConfig struct {
 	Port int `mapstructure:"port" json:"port" yaml:"port"`
 }
 
-type MongoConfig struct {
-	URI    string `mapstructure:"uri" json:"uri" yaml:"uri"`
-	DBName string `mapstructure:"db" json:"db" yaml:"db"`
+type PostgresConfig struct {
+	DSN                    string `mapstructure:"dsn" json:"dsn" yaml:"dsn"`
+	MaxOpenConns           int    `mapstructure:"max_open_conns" json:"max_open_conns" yaml:"max_open_conns"`
+	MaxIdleConns           int    `mapstructure:"max_idle_conns" json:"max_idle_conns" yaml:"max_idle_conns"`
+	ConnMaxLifetimeMinutes int    `mapstructure:"conn_max_lifetime_minutes" json:"conn_max_lifetime_minutes" yaml:"conn_max_lifetime_minutes"`
 }
 
 type OtelConfig struct {

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 
@@ -8,8 +9,6 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"go.mongodb.org/mongo-driver/bson/primitive"
-	"go.mongodb.org/mongo-driver/mongo"
 )
 
 var ManifestRouteApi = NewManifestHandler()
@@ -55,34 +54,26 @@ func (h *ManifestHandler) Create(c *gin.Context) {
 // @Success 200 {array} model.Manifest
 // @Router  /api/v1/manifests [get]
 func (h *ManifestHandler) List(c *gin.Context) {
-	filter := primitive.M{}
-	if !includeDeleted(c) {
-		filter["deleted_at"] = primitive.M{"$exists": false}
-	}
+	filter := service.ManifestListFilter{IncludeDeleted: includeDeleted(c)}
 	if appID := c.Query("application_id"); appID != "" {
 		id, err := uuid.Parse(appID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
 			return
 		}
-		oid, err := service.BridgeUUIDToObjectID(id)
-		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
-			return
-		}
-		filter["application_id"] = oid
+		filter.ApplicationID = &id
 	}
 	if pipelineID := c.Query("pipeline_id"); pipelineID != "" {
-		filter["pipeline_id"] = pipelineID
+		filter.PipelineID = pipelineID
 	}
 	if status := c.Query("status"); status != "" {
-		filter["status"] = status
+		filter.Status = status
 	}
 	if branch := c.Query("branch"); branch != "" {
-		filter["branch"] = branch
+		filter.Branch = branch
 	}
 	if name := c.Query("name"); name != "" {
-		filter["name"] = name
+		filter.Name = name
 	}
 
 	manifests, err := service.ManifestService.List(c.Request.Context(), filter)
@@ -163,7 +154,7 @@ func (h *ManifestHandler) Patch(c *gin.Context) {
 	)
 	if err != nil {
 		// 不存在
-		if errors.Is(err, mongo.ErrNoDocuments) {
+		if errors.Is(err, sql.ErrNoRows) {
 			c.JSON(http.StatusNotFound, gin.H{"error": "manifest not found"})
 			return
 		}
