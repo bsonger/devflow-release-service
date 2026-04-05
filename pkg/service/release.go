@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -11,6 +12,7 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/argoclient"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
+	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
 	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/bsonger/devflow-service-common/loggingx"
 	"github.com/google/uuid"
@@ -21,7 +23,17 @@ import (
 
 var ReleaseService = &releaseService{}
 
+var (
+	ErrMissingRuntimeSpecRevision                      = errors.New("runtime_spec_revision_id is required")
+	ErrRuntimeSpecBindingMismatch                      = errors.New("runtime_spec_revision_id does not match release application and env")
+	runtimeLookupClient           runtimeclient.Lookup = runtimeclient.New("")
+)
+
 type releaseService struct{}
+
+func SetRuntimeClient(client runtimeclient.Lookup) {
+	runtimeLookupClient = client
+}
 
 func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, app *applicationProjection) {
 	release.ApplicationID = manifest.ApplicationID
@@ -37,6 +49,28 @@ func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, a
 	}
 }
 
+func validateReleaseBinding(release *model.Release) error {
+	if release.RuntimeSpecRevisionID == nil || *release.RuntimeSpecRevisionID == uuid.Nil {
+		return ErrMissingRuntimeSpecRevision
+	}
+	return nil
+}
+
+func (s *releaseService) ensureRuntimeBinding(ctx context.Context, release *model.Release) error {
+	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *release.RuntimeSpecRevisionID)
+	if err != nil {
+		return err
+	}
+	spec, err := runtimeLookupClient.GetRuntimeSpec(ctx, revision.RuntimeSpecID)
+	if err != nil {
+		return err
+	}
+	if spec.ApplicationID != release.ApplicationID || spec.Environment != release.Env {
+		return fmt.Errorf("%w: spec application=%s env=%s release application=%s env=%s", ErrRuntimeSpecBindingMismatch, spec.ApplicationID, spec.Environment, release.ApplicationID, release.Env)
+	}
+	return nil
+}
+
 func (s *releaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
 	log := loggingx.LoggerWithContext(ctx).With(zap.String("release.type", release.Type), zap.String("manifest.id", release.ManifestID.String()))
 
@@ -50,6 +84,12 @@ func (s *releaseService) Create(ctx context.Context, release *model.Release) (uu
 	}
 
 	populateReleaseDefaults(release, manifest, app)
+	if err := validateReleaseBinding(release); err != nil {
+		return uuid.Nil, err
+	}
+	if err := s.ensureRuntimeBinding(ctx, release); err != nil {
+		return uuid.Nil, err
+	}
 	release.WithCreateDefault()
 	if err := s.insert(ctx, release); err != nil {
 		return uuid.Nil, err
@@ -80,9 +120,9 @@ func (s *releaseService) insert(ctx context.Context, release *model.Release) err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into releases (
-			id, execution_intent_id, configuration_id, configuration_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
-		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
+			id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), nullableUUIDPtr(release.RuntimeSpecRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
 	return err
 }
 
@@ -106,7 +146,7 @@ func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model
 
 func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*model.Release, error) {
 	return scanRelease(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, configuration_id, configuration_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 		where id = $1 and deleted_at is null
 	`, id))
@@ -137,7 +177,7 @@ func (s *releaseService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]*model.Release, error) {
 	query := `
-		select id, execution_intent_id, configuration_id, configuration_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 	`
 	clauses := make([]string, 0, 5)
@@ -364,9 +404,9 @@ func (s *releaseService) updateRow(ctx context.Context, release *model.Release) 
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update releases
-		set execution_intent_id=$2, configuration_id=$3, configuration_revision_id=$4, application_id=$5, manifest_id=$6, env=$7, type=$8, steps=$9, status=$10, external_ref=$11, updated_at=$12, deleted_at=$13
+		set execution_intent_id=$2, configuration_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, application_id=$6, manifest_id=$7, env=$8, type=$9, steps=$10, status=$11, external_ref=$12, updated_at=$13, deleted_at=$14
 		where id = $1
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), nullableUUIDPtr(release.RuntimeSpecRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
 	if err != nil {
 		return err
 	}

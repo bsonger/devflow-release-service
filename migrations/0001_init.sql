@@ -75,6 +75,7 @@ CREATE TABLE IF NOT EXISTS releases (
   execution_intent_id UUID NULL,
   configuration_id UUID NULL,
   configuration_revision_id UUID NULL,
+  runtime_spec_revision_id UUID NULL,
   application_id UUID NOT NULL,
   manifest_id UUID NOT NULL,
   env TEXT NOT NULL,
@@ -101,6 +102,9 @@ CREATE INDEX IF NOT EXISTS idx_releases_configuration_revision_id
 
 CREATE INDEX IF NOT EXISTS idx_releases_execution_intent_id
   ON releases (execution_intent_id);
+
+CREATE INDEX IF NOT EXISTS idx_releases_runtime_spec_revision_id
+  ON releases (runtime_spec_revision_id);
 
 CREATE INDEX IF NOT EXISTS idx_releases_application_env
   ON releases (application_id, env);

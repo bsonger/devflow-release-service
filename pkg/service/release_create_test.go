@@ -41,3 +41,16 @@ func TestPopulateReleaseDefaultsFallsBackToProd(t *testing.T) {
 		t.Fatalf("got type %s want %s", release.Type, model.ReleaseUpgrade)
 	}
 }
+
+func TestValidateReleaseRequiresRuntimeSpecRevisionID(t *testing.T) {
+	release := &model.Release{
+		ManifestID:    uuid.New(),
+		ApplicationID: uuid.New(),
+		Env:           "staging",
+	}
+
+	err := validateReleaseBinding(release)
+	if err == nil {
+		t.Fatalf("expected error when runtime_spec_revision_id is missing")
+	}
+}

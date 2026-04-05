@@ -95,6 +95,7 @@ func scanRelease(scanner interface {
 		executionIntent         sql.NullString
 		configurationID         sql.NullString
 		configurationRevisionID sql.NullString
+		runtimeSpecRevisionID   sql.NullString
 		stepsBytes              []byte
 		deletedAt               sql.NullTime
 	)
@@ -104,6 +105,7 @@ func scanRelease(scanner interface {
 		&executionIntent,
 		&configurationID,
 		&configurationRevisionID,
+		&runtimeSpecRevisionID,
 		&item.ApplicationID,
 		&item.ManifestID,
 		&item.Env,
@@ -128,6 +130,10 @@ func scanRelease(scanner interface {
 		return nil, err
 	}
 	item.ConfigurationRevisionID, err = parseNullUUID(configurationRevisionID)
+	if err != nil {
+		return nil, err
+	}
+	item.RuntimeSpecRevisionID, err = parseNullUUID(runtimeSpecRevisionID)
 	if err != nil {
 		return nil, err
 	}

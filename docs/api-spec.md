@@ -28,8 +28,9 @@
 
 - `POST /api/v1/manifests` accepts build command inputs such as `application_id` and `branch`
 - `repo_address` and `services` are resolved from app-service and frozen into the created `Manifest`
-- `POST /api/v1/releases` may accept platform-relevant fields: `manifest_id`, optional `configuration_id`, optional `configuration_revision_id`, optional `env` (default `prod`), and release `type`
+- `POST /api/v1/releases` may accept platform-relevant fields: `manifest_id`, required `runtime_spec_revision_id`, optional `configuration_id`, optional `configuration_revision_id`, optional `env` (default `prod`), and release `type`
 - if both `configuration_id` and `configuration_revision_id` are present, the service must validate that they belong together
+- `runtime_spec_revision_id` must exist and must belong to the same `application + env` as the derived release target
 - `PATCH /api/v1/manifests/:id` only supports repo-defined patch fields such as `commit_hash` and `digest`
 - list endpoints use the common pagination parameters and filtering conventions in this repo
 

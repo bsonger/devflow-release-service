@@ -27,7 +27,7 @@ func TestManifestContract(t *testing.T) {
 
 func TestReleaseContract(t *testing.T) {
 	typ := reflect.TypeOf(Release{})
-	for _, field := range []string{"ExecutionIntentID", "ConfigurationID", "ConfigurationRevisionID", "ApplicationID", "ManifestID", "Env", "Type", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ConfigurationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "ApplicationID", "ManifestID", "Env", "Type", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Release missing field %s", field)

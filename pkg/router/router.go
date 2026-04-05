@@ -1,7 +1,6 @@
 package router
 
 import (
-	_ "github.com/bsonger/devflow-release-service/docs" // swagger docs 自动生成
 	"github.com/bsonger/devflow-service-common/routercore"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"

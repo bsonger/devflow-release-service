@@ -1,9 +1,11 @@
 package api
 
 import (
+	"errors"
 	"net/http"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
@@ -35,6 +37,10 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 	release.WithCreateDefault()
 	id, err := service.ReleaseService.Create(c.Request.Context(), release)
 	if err != nil {
+		if errors.Is(err, service.ErrMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}

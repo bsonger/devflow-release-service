@@ -7,6 +7,8 @@ import (
 	"github.com/bsonger/devflow-common/client/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/argoclient"
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
+	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/bsonger/devflow-release-service/pkg/telemetry"
 	"github.com/bsonger/devflow-service-common/loggingx"
@@ -25,13 +27,14 @@ import (
 )
 
 type Config struct {
-	Server    *model.ServerConfig   `mapstructure:"server" json:"server" yaml:"server"`
-	Postgres  *model.PostgresConfig `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
-	Log       *model.LogConfig      `mapstructure:"log" json:"log" yaml:"log"`
-	Otel      *model.OtelConfig     `mapstructure:"otel" json:"otel" yaml:"otel"`
-	Repo      *model.Repo           `mapstructure:"repo" json:"repo" yaml:"repo"`
-	Consul    *model.Consul         `mapstructure:"consul" json:"consul" yaml:"consul"`
-	Pyroscope string                `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
+	Server    *model.ServerConfig         `mapstructure:"server" json:"server" yaml:"server"`
+	Postgres  *model.PostgresConfig       `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
+	Log       *model.LogConfig            `mapstructure:"log" json:"log" yaml:"log"`
+	Otel      *model.OtelConfig           `mapstructure:"otel" json:"otel" yaml:"otel"`
+	Repo      *model.Repo                 `mapstructure:"repo" json:"repo" yaml:"repo"`
+	Runtime   *model.RuntimeServiceConfig `mapstructure:"runtime" json:"runtime" yaml:"runtime"`
+	Consul    *model.Consul               `mapstructure:"consul" json:"consul" yaml:"consul"`
+	Pyroscope string                      `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
 
 func Load() (*Config, error) {
@@ -100,6 +103,7 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 	if err != nil {
 		return shutdown, err
 	}
+	service.SetRuntimeClient(runtimeclient.New(stringValue(config.Runtime, func(v *model.RuntimeServiceConfig) string { return v.BaseURL })))
 	model.InitConfigRepo(config.Repo)
 	return func(shutdownCtx context.Context) error {
 		closeErr := db.Close()

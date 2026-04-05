@@ -27,6 +27,7 @@
 | `execution_intent_id` | `*uuid.UUID` | optional | system | 关联 release intent |
 | `configuration_id` | `*uuid.UUID` | optional | user/system | 关联的 Configuration ID |
 | `configuration_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的配置 revision |
+| `runtime_spec_revision_id` | `*uuid.UUID` | required | user/system | 绑定的运行期望态 revision |
 | `application_id` | `uuid.UUID` | system-derived | system | 应用 ID |
 | `manifest_id` | `uuid.UUID` | required | user | 发布基于哪个 manifest |
 | `type` | `string` | optional | user/system | 发布动作；为空默认 `Upgrade` |
@@ -78,6 +79,7 @@
   - `POST /api/v1/releases`
 - practical required fields:
   - `manifest_id`
+  - `runtime_spec_revision_id`
 - defaults / derived values:
   - `type` 为空时默认 `Upgrade`
   - `application_id` 来自 `Manifest`
@@ -99,6 +101,7 @@
 ## Validation notes
 
 - `manifest_id` 必须引用存在的 `Manifest`
+- `runtime_spec_revision_id` 必须存在，且必须属于同一 `application + env`
 - 若同时传 `configuration_id` 与 `configuration_revision_id`，两者必须属于同一配置
 - 当前 `env` 不是完全自由输入字段，而是服务约束下的目标环境
 

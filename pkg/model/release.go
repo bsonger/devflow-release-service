@@ -8,6 +8,7 @@ type Release struct {
 	ExecutionIntentID       *uuid.UUID    `json:"execution_intent_id,omitempty" db:"execution_intent_id"`
 	ConfigurationID         *uuid.UUID    `json:"configuration_id,omitempty" db:"configuration_id"`
 	ConfigurationRevisionID *uuid.UUID    `json:"configuration_revision_id,omitempty" db:"configuration_revision_id"`
+	RuntimeSpecRevisionID   *uuid.UUID    `json:"runtime_spec_revision_id,omitempty" db:"runtime_spec_revision_id"`
 	ApplicationID           uuid.UUID     `json:"application_id" db:"application_id"`
 	ManifestID              uuid.UUID     `json:"manifest_id" db:"manifest_id"`
 	Env                     string        `json:"env" db:"env"`
