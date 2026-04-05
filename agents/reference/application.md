@@ -1,27 +1,14 @@
-# Application Reference
+# Application Reference Redirect
 
-## Purpose
+This file is index-only.
 
-说明 `Application` 在当前仓库中的资源语义。
+Authoritative sources:
 
-## Scope
+- `devflow-control/docs/resources/application.md`
+- `devflow-control/docs/services/app-service.md`
+- `devflow-app-service/docs/resources/application.md`
 
-适用于：
-
-- `Application` 资源说明
-- `active_manifest` 关联判断
-
-## Must
-
-- `Application` 表示应用的发布与运行单元
-- 典型字段：
-  - `id`
-  - `name`
-  - `project_id`
-  - `project_name`
-  - `repo_url`
-  - `replica`
-  - `internet`
+This file must not define application semantics.
   - `status`
 - `active_manifest_id` / `active_manifest_name` 指向当前生效的 Manifest
 - 若请求提供 `project_id`，服务会校验项目存在并把 `project_name` 对齐到项目名称

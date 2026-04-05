@@ -1,27 +1,14 @@
-# Project Reference
+# Project Reference Redirect
 
-## Purpose
+This file is index-only.
 
-定义 `Project` 资源在 metadata/control plane 中的职责、字段和归属语义。
+Authoritative sources:
 
-## Scope
+- `devflow-control/docs/resources/project.md`
+- `devflow-control/docs/services/app-service.md`
+- `devflow-app-service/docs/resources/project.md`
 
-适用于：
-
-- `Project` 元数据模型
-- `Application` 对 `Project` 的归属关系
-- app-service 下的项目查询与聚合接口
-
-不适用于：
-
-- 发布执行流程
-- Tekton / Argo / verify-service 回写语义
-
-## Must
-
-- `Project` 必须是一等元数据资源，不能只靠 `project_name` 字符串存在
-- 推荐字段至少包括：
-  - `id`
+This file must not define project semantics.
   - `name`
   - `key`
   - `description`
