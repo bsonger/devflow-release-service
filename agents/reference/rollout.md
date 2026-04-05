@@ -24,7 +24,7 @@
 
 ## Must Not
 
-- 不直接写 Mongo
+- 不直接写 PostgreSQL
 - 不在观察器侧决定 metadata 真相来源
 
 ## Outputs

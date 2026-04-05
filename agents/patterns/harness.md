@@ -36,7 +36,7 @@
   - 禁止把未验证写成已验证
 - 把 `done` 写成可检查行为：
   - HTTP 状态码与响应体
-  - Mongo 字段变化
+  - PostgreSQL 字段变化
   - `Application` / `Manifest` / `Release` 状态值
   - 日志关键点
   - Swagger 是否需要同步

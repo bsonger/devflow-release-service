@@ -15,7 +15,7 @@
 不适用于：
 
 - `pkg/service` 内的业务决策
-- Mongo、Argo、Tekton 等依赖调用实现
+- PostgreSQL、Argo、Tekton 等依赖调用实现
 
 ## Must
 

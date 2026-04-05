@@ -1,7 +1,7 @@
 # 011 controller 风格的 step 同步通过 verify-service 落库
 
 - 决策：
-  - 吸收 `devflow-controller` 的 step 同步模型，但不让 controller 直接写当前仓库的 Mongo。
+  - 吸收 `devflow-controller` 的 step 同步模型，但不让 controller 直接写当前仓库的 PostgreSQL。
   - `Release` 增加 `steps` 字段，`verify-service` 增加 `POST /api/v1/verify/release/steps` 作为统一写回入口。
 - 原因：
   - `devflow-controller` 已经证明了 `Application` / `Deployment` / `Rollout` 事件同步到 `release.steps` 的模型是有效的。

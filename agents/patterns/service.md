@@ -9,7 +9,7 @@
 适用于：
 
 - 所有 `pkg/service/*` 业务方法
-- 需要访问 Mongo、Tekton、Argo、verify-service 等依赖的场景
+- 需要访问 PostgreSQL、Tekton、Argo、verify-service 等依赖的场景
 
 不适用于：
 
