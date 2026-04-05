@@ -1,22 +1,39 @@
 package api
 
 import (
+	"context"
+	"database/sql"
 	"errors"
 	"net/http"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
 	"github.com/bsonger/devflow-release-service/pkg/service"
+	"github.com/bsonger/devflow-service-common/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 var ReleaseRouteApi = NewReleaseHandler()
 
-type ReleaseHandler struct{}
+type releaseService interface {
+	Create(ctx context.Context, release *model.Release) (uuid.UUID, error)
+	Get(ctx context.Context, id uuid.UUID) (*model.Release, error)
+	List(ctx context.Context, filter service.ReleaseListFilter) ([]*model.Release, error)
+}
+
+type ReleaseHandler struct {
+	svc releaseService
+}
 
 func NewReleaseHandler() *ReleaseHandler {
-	return &ReleaseHandler{}
+	return &ReleaseHandler{svc: service.ReleaseService}
+}
+
+type CreateReleaseRequest struct {
+	ManifestID uuid.UUID `json:"manifest_id"`
+	Env        string    `json:"env,omitempty"`
+	Type       string    `json:"type,omitempty"`
 }
 
 // Create
@@ -25,62 +42,71 @@ func NewReleaseHandler() *ReleaseHandler {
 // @Tags Release
 // @Accept json
 // @Produce json
-// @Param data body model.Release true "Release Data"
-// @Success 200 {object} CreateResponse
+// @Param data body api.CreateReleaseRequest true "Release Data"
+// @Success 201 {object} httpx.DataResponse[model.Release]
 // @Router /api/v1/releases [post]
 func (h *ReleaseHandler) Create(c *gin.Context) {
-	var release *model.Release
-	if err := c.ShouldBindJSON(&release); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req CreateReleaseRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
+	release := &model.Release{
+		ManifestID: req.ManifestID,
+		Env:        req.Env,
+		Type:       req.Type,
+	}
 	release.WithCreateDefault()
-	id, err := service.ReleaseService.Create(c.Request.Context(), release)
+	_, err := h.svc.Create(c.Request.Context(), release)
 	if err != nil {
 		if errors.Is(err, service.ErrManifestMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
-			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			httpx.WriteError(c, http.StatusConflict, "failed_precondition", err.Error(), nil)
 			return
 		}
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, newCreateResponse(id, release.ExecutionIntentID))
+	httpx.WriteData(c, http.StatusCreated, release)
 }
 
 // Get
 // @Summary 获取Release
 // @Tags Release
 // @Param id path string true "Release ID"
-// @Success 200 {object} model.Release
+// @Success 200 {object} httpx.DataResponse[model.Release]
 // @Router /api/v1/releases/{id} [get]
 func (h *ReleaseHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
 		return
 	}
 
-	release, err := service.ReleaseService.Get(c.Request.Context(), id)
+	release, err := h.svc.Get(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, release)
+	httpx.WriteData(c, http.StatusOK, release)
 }
 
 // List
 // @Summary 获取Release列表
 // @Tags Release
-// @Success 200 {array} model.Release
+// @Success 200 {object} httpx.ListResponse[*model.Release]
 // @Router /api/v1/releases [get]
 func (h *ReleaseHandler) List(c *gin.Context) {
-	filter := service.ReleaseListFilter{IncludeDeleted: includeDeleted(c)}
+	filter := service.ReleaseListFilter{IncludeDeleted: httpx.IncludeDeleted(c)}
 	if appID := c.Query("application_id"); appID != "" {
 		id, err := uuid.Parse(appID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
+			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid application_id", nil)
 			return
 		}
 		filter.ApplicationID = &id
@@ -88,7 +114,7 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 	if manifestID := c.Query("manifest_id"); manifestID != "" {
 		id, err := uuid.Parse(manifestID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid manifest_id"})
+			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
 			return
 		}
 		filter.ManifestID = &id
@@ -99,21 +125,19 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 	if releaseType := c.Query("type"); releaseType != "" {
 		filter.Type = releaseType
 	}
-	releases, err := service.ReleaseService.List(c.Request.Context(), filter)
+	releases, err := h.svc.List(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	paging, err := parsePagination(c)
+	paging, err := httpx.ParsePagination(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	total := len(releases)
-	releases = paginateSlice(releases, paging)
-	setPaginationHeaders(c, total, paging)
-
-	c.JSON(http.StatusOK, releases)
+	releases = httpx.PaginateSlice(releases, paging)
+	httpx.WriteList(c, http.StatusOK, releases, paging, total)
 }

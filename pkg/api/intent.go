@@ -1,80 +1,89 @@
 package api
 
 import (
+	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 	"strings"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/service"
+	"github.com/bsonger/devflow-service-common/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 var IntentRouteApi = NewIntentHandler()
 
-type IntentHandler struct{}
+type intentService interface {
+	Get(ctx context.Context, id uuid.UUID) (*model.Intent, error)
+	List(ctx context.Context, filter service.IntentListFilter) ([]*model.Intent, error)
+}
+
+type IntentHandler struct {
+	svc intentService
+}
 
 func NewIntentHandler() *IntentHandler {
-	return &IntentHandler{}
+	return &IntentHandler{svc: service.IntentService}
 }
 
 // List
 // @Summary 获取执行意图列表
 // @Description 按 kind、status、resource 等维度查询 execution intents
 // @Tags Intent
-// @Success 200 {array} model.Intent
-// @Failure 400 {object} map[string]string
-// @Failure 500 {object} map[string]string
+// @Success 200 {object} httpx.ListResponse[*model.Intent]
 // @Router /api/v1/intents [get]
 func (h *IntentHandler) List(c *gin.Context) {
 	filter, err := buildIntentFilter(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
-	intents, err := service.IntentService.List(c.Request.Context(), filter)
+	intents, err := h.svc.List(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	paging, err := parsePagination(c)
+	paging, err := httpx.ParsePagination(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	total := len(intents)
-	intents = paginateSlice(intents, paging)
-	setPaginationHeaders(c, total, paging)
-
-	c.JSON(http.StatusOK, intents)
+	intents = httpx.PaginateSlice(intents, paging)
+	httpx.WriteList(c, http.StatusOK, intents, paging, total)
 }
 
 // Get
 // @Summary 获取执行意图
 // @Tags Intent
 // @Param id path string true "Intent ID"
-// @Success 200 {object} model.Intent
-// @Failure 400 {object} map[string]string
-// @Failure 404 {object} map[string]string
+// @Success 200 {object} httpx.DataResponse[model.Intent]
 // @Router /api/v1/intents/{id} [get]
 func (h *IntentHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
 		return
 	}
 
-	intent, err := service.IntentService.Get(c.Request.Context(), id)
+	intent, err := h.svc.Get(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, intent)
+	httpx.WriteData(c, http.StatusOK, intent)
 }
 
 func buildIntentFilter(c *gin.Context) (service.IntentListFilter, error) {

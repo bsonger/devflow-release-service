@@ -1,30 +1,46 @@
 # Observability
 
-## Mandatory Rule
+## Shared Baseline
 
-只要涉及调用其他服务或外部系统，就必须同时产出：
+This repo follows the shared telemetry contract implemented in `devflow-service-common`.
 
-- metrics
-- trace
-- structured log
+- structured logs with shared runtime fields
+- `devflow_http_*` ingress metrics
+- `devflow_dependency_*` outbound metrics
+- standard server/client spans with service-defined business attributes
+- optional diagnostics only for `pprof` and Pyroscope
 
-## Inbound HTTP
+## Repo-Local Focus
 
-- 所有业务请求必须有 server span
-- 记录请求次数、耗时、错误数
-- `/metrics`、`/healthz`、`/readyz`、`/debug/pprof/*` 不计入业务指标
+`devflow-release-service` should add resource context for:
 
-## Outbound
+- `manifest`
+- `release`
+- `intent`
 
-- 对 Tekton、Argo CD、worker dispatch 或其他外部系统的调用必须有 client span
-- 必须记录调用次数、延迟、错误数和结构化日志
+Recommended structured fields:
 
-## Log Fields
+- `resource`
+- `resource_id`
+- `application_id`
+- `manifest_id`
+- `release_id`
+- `intent_id`
+- `dependency`
+- `result`
+- `error_code`
 
-- 基础字段：`service`、`trace_id`、`span_id`、`request_id`
-- 资源字段：`application_id`、`manifest_id`、`release_id`、`intent_id`、`external_ref`
+## Outbound Dependencies
+
+Calls to these systems should always go through shared dependency telemetry helpers where possible:
+
+- runtime-service
+- Tekton
+- Argo CD
+- Git or manifest repositories
 
 ## Profile
 
-- 保留 `/debug/pprof/*`
-- worker 和 API 进程都应允许 profile 定位热点
+- `pprof` is disabled by default
+- Pyroscope is disabled by default
+- both are enabled only through explicit runtime configuration

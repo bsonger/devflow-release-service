@@ -1,23 +1,40 @@
 package api
 
 import (
+	"context"
 	"database/sql"
 	"errors"
 	"net/http"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/service"
+	"github.com/bsonger/devflow-service-common/httpx"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
 
 var ManifestRouteApi = NewManifestHandler()
 
+type manifestService interface {
+	CreateManifest(ctx context.Context, m *model.Manifest) (uuid.UUID, error)
+	List(ctx context.Context, filter service.ManifestListFilter) ([]model.Manifest, error)
+	Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error)
+	Patch(ctx context.Context, id uuid.UUID, patch *model.PatchManifestRequest) error
+}
+
 type ManifestHandler struct {
+	svc manifestService
 }
 
 func NewManifestHandler() *ManifestHandler {
-	return &ManifestHandler{}
+	return &ManifestHandler{svc: service.ManifestService}
+}
+
+type CreateManifestRequest struct {
+	ApplicationID           uuid.UUID  `json:"application_id"`
+	ConfigurationRevisionID *uuid.UUID `json:"configuration_revision_id,omitempty"`
+	RuntimeSpecRevisionID   *uuid.UUID `json:"runtime_spec_revision_id,omitempty"`
+	Branch                  string     `json:"branch"`
 }
 
 // Create
@@ -26,39 +43,42 @@ func NewManifestHandler() *ManifestHandler {
 // @Tags         Manifest
 // @Accept       json
 // @Produce      json
-// @Param        data            body  model.Manifest    true "Manifest 数据（branch 必填）"
-// @Success      200  {object}  CreateResponse
-// @Failure      400  {object}  map[string]string
+// @Param        data body api.CreateManifestRequest true "Manifest 数据（branch 必填）"
+// @Success      201 {object} httpx.DataResponse[model.Manifest]
 // @Router       /api/v1/manifests [post]
 func (h *ManifestHandler) Create(c *gin.Context) {
-
-	var m model.Manifest
-	if err := c.ShouldBindJSON(&m); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	var req CreateManifestRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
+	m := model.Manifest{
+		ApplicationID:           req.ApplicationID,
+		ConfigurationRevisionID: req.ConfigurationRevisionID,
+		RuntimeSpecRevisionID:   req.RuntimeSpecRevisionID,
+		Branch:                  req.Branch,
+	}
 
-	// 保存 Manifest
-	id, err := service.ManifestService.CreateManifest(c.Request.Context(), &m)
+	_, err := h.svc.CreateManifest(c.Request.Context(), &m)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, newCreateResponse(id, m.ExecutionIntentID))
+	httpx.WriteData(c, http.StatusCreated, m)
 }
 
 // List
 // @Summary 获取应用列表
 // @Tags    Manifest
-// @Success 200 {array} model.Manifest
+// @Success 200 {object} httpx.ListResponse[model.Manifest]
 // @Router  /api/v1/manifests [get]
 func (h *ManifestHandler) List(c *gin.Context) {
-	filter := service.ManifestListFilter{IncludeDeleted: includeDeleted(c)}
+	filter := service.ManifestListFilter{IncludeDeleted: httpx.IncludeDeleted(c)}
 	if appID := c.Query("application_id"); appID != "" {
 		id, err := uuid.Parse(appID)
 		if err != nil {
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid application_id"})
+			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid application_id", nil)
 			return
 		}
 		filter.ApplicationID = &id
@@ -76,45 +96,47 @@ func (h *ManifestHandler) List(c *gin.Context) {
 		filter.Name = name
 	}
 
-	manifests, err := service.ManifestService.List(c.Request.Context(), filter)
+	manifests, err := h.svc.List(c.Request.Context(), filter)
 	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	paging, err := parsePagination(c)
+	paging, err := httpx.ParsePagination(c)
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
 	total := len(manifests)
-	manifests = paginateSlice(manifests, paging)
-	setPaginationHeaders(c, total, paging)
-
-	c.JSON(http.StatusOK, manifests)
+	manifests = httpx.PaginateSlice(manifests, paging)
+	httpx.WriteList(c, http.StatusOK, manifests, paging, total)
 }
 
 // Get
 // @Summary	获取应用
 // @Tags		Manifest
 // @Param		id	path		string	true	"Manifest ID"
-// @Success	200	{object}	model.Manifest
+// @Success	200	{object}	httpx.DataResponse[model.Manifest]
 // @Router		/api/v1/manifests/{id} [get]
 func (h *ManifestHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
 		return
 	}
 
-	app, err := service.ManifestService.Get(c.Request.Context(), id)
+	app, err := h.svc.Get(c.Request.Context(), id)
 	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{"error": "not found"})
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	c.JSON(http.StatusOK, app)
+	httpx.WriteData(c, http.StatusOK, app)
 }
 
 // Patch
@@ -125,47 +147,35 @@ func (h *ManifestHandler) Get(c *gin.Context) {
 // @Produce		json
 // @Param		id		path		string			true	"Manifest ID"
 // @Param		data	body		model.PatchManifestRequest	false	"Patch 数据"
-// @Success		200		{object}	map[string]string
-// @Failure		400		{object}	map[string]string
-// @Failure		404		{object}	map[string]string
-// @Failure		500		{object}	map[string]string
+// @Success		204
 // @Router		/api/v1/manifests/{id} [patch]
 func (h *ManifestHandler) Patch(c *gin.Context) {
-
-	// 1️⃣ 解析 ID
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid id"})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
 		return
 	}
 
-	// 2️⃣ 解析 Patch Body
 	var patch model.PatchManifestRequest
 	if err := c.ShouldBindJSON(&patch); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", err.Error(), nil)
 		return
 	}
 
-	// 3️⃣ 调用 Service Patch
-	err = service.ManifestService.Patch(
+	err = h.svc.Patch(
 		c.Request.Context(),
 		id,
 		&patch,
 	)
 	if err != nil {
-		// 不存在
 		if errors.Is(err, sql.ErrNoRows) {
-			c.JSON(http.StatusNotFound, gin.H{"error": "manifest not found"})
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "manifest not found", nil)
 			return
 		}
 
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
 		return
 	}
 
-	// 4️⃣ 返回成功
-	c.JSON(http.StatusOK, gin.H{
-		"message": "patched",
-		"id":      id.String(),
-	})
+	httpx.WriteNoContent(c)
 }
