@@ -19,8 +19,8 @@ BEGIN
   IF NOT EXISTS (
     SELECT 1
     FROM information_schema.columns
-    WHERE table_name = 'manifests' AND column_name = 'services'
+    WHERE table_name = 'manifests' AND column_name = 'runtime_spec_revision_id'
   ) THEN
-    RAISE EXCEPTION 'missing column: manifests.services';
+    RAISE EXCEPTION 'missing column: manifests.runtime_spec_revision_id';
   END IF;
 END $$;

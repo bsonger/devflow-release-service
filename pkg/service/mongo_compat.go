@@ -9,10 +9,6 @@ import (
 	"github.com/google/uuid"
 )
 
-type serviceShape struct {
-	Ports []model.Port `json:"ports"`
-}
-
 type applicationProjection struct {
 	ID          uuid.UUID
 	CreatedAt   time.Time
@@ -22,36 +18,31 @@ type applicationProjection struct {
 	ProjectName string
 	RepoAddress string
 	RepoURL     string
-	Replica     *int32
-	Type        model.ReleaseType
-	Service     serviceShape
-	Internet    model.Internet
 }
 
 func scanManifest(scanner interface {
 	Scan(dest ...any) error
 }) (*model.Manifest, error) {
 	var (
-		item            model.Manifest
-		executionIntent sql.NullString
-		replica         sql.NullInt32
-		servicesBytes   []byte
-		stepsBytes      []byte
-		deletedAt       sql.NullTime
+		item                    model.Manifest
+		executionIntent         sql.NullString
+		configurationRevisionID sql.NullString
+		runtimeSpecRevisionID   sql.NullString
+		stepsBytes              []byte
+		deletedAt               sql.NullTime
 	)
 
 	if err := scanner.Scan(
 		&item.ID,
 		&executionIntent,
 		&item.ApplicationID,
+		&configurationRevisionID,
+		&runtimeSpecRevisionID,
 		&item.Name,
 		&item.Branch,
 		&item.RepoAddress,
 		&item.CommitHash,
-		&replica,
 		&item.Digest,
-		&item.Type,
-		&servicesBytes,
 		&item.PipelineID,
 		&stepsBytes,
 		&item.Status,
@@ -67,68 +58,6 @@ func scanManifest(scanner interface {
 		return nil, err
 	}
 	item.ExecutionIntentID = intentID
-	if replica.Valid {
-		value := replica.Int32
-		item.Replica = &value
-	}
-	if len(servicesBytes) > 0 {
-		if err := json.Unmarshal(servicesBytes, &item.Services); err != nil {
-			return nil, err
-		}
-	}
-	if len(stepsBytes) > 0 {
-		if err := json.Unmarshal(stepsBytes, &item.Steps); err != nil {
-			return nil, err
-		}
-	}
-	if deletedAt.Valid {
-		item.DeletedAt = &deletedAt.Time
-	}
-	return &item, nil
-}
-
-func scanRelease(scanner interface {
-	Scan(dest ...any) error
-}) (*model.Release, error) {
-	var (
-		item                    model.Release
-		executionIntent         sql.NullString
-		configurationID         sql.NullString
-		configurationRevisionID sql.NullString
-		runtimeSpecRevisionID   sql.NullString
-		stepsBytes              []byte
-		deletedAt               sql.NullTime
-	)
-
-	if err := scanner.Scan(
-		&item.ID,
-		&executionIntent,
-		&configurationID,
-		&configurationRevisionID,
-		&runtimeSpecRevisionID,
-		&item.ApplicationID,
-		&item.ManifestID,
-		&item.Env,
-		&item.Type,
-		&stepsBytes,
-		&item.Status,
-		&item.ExternalRef,
-		&item.CreatedAt,
-		&item.UpdatedAt,
-		&deletedAt,
-	); err != nil {
-		return nil, err
-	}
-
-	var err error
-	item.ExecutionIntentID, err = parseNullUUID(executionIntent)
-	if err != nil {
-		return nil, err
-	}
-	item.ConfigurationID, err = parseNullUUID(configurationID)
-	if err != nil {
-		return nil, err
-	}
 	item.ConfigurationRevisionID, err = parseNullUUID(configurationRevisionID)
 	if err != nil {
 		return nil, err
@@ -148,13 +77,54 @@ func scanRelease(scanner interface {
 	return &item, nil
 }
 
+func scanRelease(scanner interface {
+	Scan(dest ...any) error
+}) (*model.Release, error) {
+	var (
+		item            model.Release
+		executionIntent sql.NullString
+		stepsBytes      []byte
+		deletedAt       sql.NullTime
+	)
+
+	if err := scanner.Scan(
+		&item.ID,
+		&executionIntent,
+		&item.ApplicationID,
+		&item.ManifestID,
+		&item.Env,
+		&item.Type,
+		&stepsBytes,
+		&item.Status,
+		&item.ExternalRef,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return nil, err
+	}
+
+	var err error
+	item.ExecutionIntentID, err = parseNullUUID(executionIntent)
+	if err != nil {
+		return nil, err
+	}
+	if len(stepsBytes) > 0 {
+		if err := json.Unmarshal(stepsBytes, &item.Steps); err != nil {
+			return nil, err
+		}
+	}
+	if deletedAt.Valid {
+		item.DeletedAt = &deletedAt.Time
+	}
+	return &item, nil
+}
+
 func scanIntent(scanner interface {
 	Scan(dest ...any) error
 }) (*model.Intent, error) {
 	var (
 		item           model.Intent
-		manifestID     sql.NullString
-		releaseID      sql.NullString
 		claimedAt      sql.NullTime
 		leaseExpiresAt sql.NullTime
 		deletedAt      sql.NullTime
@@ -166,14 +136,6 @@ func scanIntent(scanner interface {
 		&item.Status,
 		&item.ResourceType,
 		&item.ResourceID,
-		&item.ApplicationID,
-		&manifestID,
-		&releaseID,
-		&item.ReleaseType,
-		&item.Env,
-		&item.RepoAddress,
-		&item.Branch,
-		&item.ExternalRef,
 		&item.TraceID,
 		&item.Message,
 		&item.LastError,
@@ -185,16 +147,6 @@ func scanIntent(scanner interface {
 		&item.UpdatedAt,
 		&deletedAt,
 	); err != nil {
-		return nil, err
-	}
-
-	var err error
-	item.ManifestID, err = parseNullUUID(manifestID)
-	if err != nil {
-		return nil, err
-	}
-	item.ReleaseID, err = parseNullUUID(releaseID)
-	if err != nil {
 		return nil, err
 	}
 	if claimedAt.Valid {

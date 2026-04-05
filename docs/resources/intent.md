@@ -5,11 +5,11 @@
 - owner repo: `devflow-release-service`
 - authoritative model file: `pkg/model/intent.go`
 - authoritative API doc: `docs/api-spec.md`
-- generated swagger: `docs/swagger.yaml` (transitional; still reflects legacy handler layer until API migration)
 
 ## Purpose
 
-`Intent` 是控制面执行意图记录，用于 build/release 长任务的异步编排、worker 消费与状态跟踪。
+`Intent` 是异步执行协调资源。
+它不再复制业务上下文，只记录某个目标资源的执行声明、抢占状态和失败信息。
 
 ## Common base fields
 
@@ -24,73 +24,31 @@
 
 | Field | Type | Required | Writable | Description |
 |---|---|---|---|---|
-| `kind` | `IntentKind` | system-set | system | `build` 或 `release` |
-| `status` | `IntentStatus` | system-set | system/worker/verify | 当前意图状态 |
-| `resource_type` | `string` | system-set | system | 目标资源类型，如 `manifest` / `release` |
-| `resource_id` | `uuid.UUID` | system-set | system | 目标资源 ID |
-| `application_id` | `uuid.UUID` | system-set | system | 应用 ID |
-| `manifest_id` | `*uuid.UUID` | optional | system | Manifest ID |
-| `release_id` | `*uuid.UUID` | optional | system | Release ID |
-| `release_type` | `string` | optional | system | 发布类型 |
-| `env` | `string` | optional | system | 目标环境 |
-| `repo_address` | `string` | optional | system | 仓库地址 |
-| `branch` | `string` | optional | system | 分支 |
-| `external_ref` | `string` | optional | worker/verify | 外部系统引用 |
-| `trace_id` | `string` | optional | system/worker | 调用链 trace 标识 |
-| `message` | `string` | optional | worker/verify | 状态消息 |
-| `last_error` | `string` | optional | worker/system | 最后错误 |
-| `claimed_by` | `string` | optional | worker/system | 被哪个 worker 认领 |
-| `claimed_at` | `*time.Time` | optional | worker/system | 认领时间 |
-| `lease_expires_at` | `*time.Time` | optional | worker/system | lease 过期时间 |
-| `attempt_count` | `int` | optional | worker/system | 尝试次数 |
+| `kind` | `IntentKind` | required | system | 执行类型，如 `build` / `release` |
+| `status` | `IntentStatus` | required | system | 当前执行状态 |
+| `resource_type` | `string` | required | system | 目标资源类型，如 `manifest` / `release` |
+| `resource_id` | `uuid.UUID` | required | system | 目标资源 ID |
+| `trace_id` | `string` | optional | system | trace 关联 ID |
+| `message` | `string` | optional | system | 最近状态说明 |
+| `last_error` | `string` | optional | system | 最近失败原因 |
+| `claimed_by` | `string` | optional | worker | 当前 worker |
+| `claimed_at` | `*time.Time` | optional | worker | 抢占时间 |
+| `lease_expires_at` | `*time.Time` | optional | worker | 租约到期时间 |
+| `attempt_count` | `int` | system-managed | system | 处理次数 |
 
-## Enums
+## Query notes
 
-### `IntentKind`
-- `build`
-- `release`
-
-### `IntentStatus`
-- `Pending`
-- `Running`
-- `Succeeded`
-- `Failed`
-
-## Create / update rules
-
-### Create
-- current behavior:
-  - 不通过 public create API 直接创建
-  - 由服务在创建 `Manifest` / `Release` 时派生创建
-- build intent source:
-  - `service.IntentService.CreateBuildIntent`
-- release intent source:
-  - `service.IntentService.CreateReleaseIntent`
-
-### Update
-- common update paths:
-  - worker claim / lease 更新
-  - verify 根据 build/release 结果回写状态
-  - external ref / message 更新
-
-## Query rules
-
-- public surface:
-  - `GET /api/v1/intents`
-  - `GET /api/v1/intents/{id}`
-- common query filters:
+- 列表支持：
   - `kind`
   - `status`
   - `resource_type`
   - `resource_id`
-  - `application_id`
-  - `manifest_id`
-  - `release_id`
-  - `release_type`
-  - `env`
-  - `branch`
   - `claimed_by`
-  - `external_ref`
+
+## Validation notes
+
+- `Intent` 只拥有执行协调信息
+- 应用、manifest、release、repo、branch 等业务上下文应从目标资源追溯
 
 ## Source pointers
 

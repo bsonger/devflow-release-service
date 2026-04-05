@@ -5,12 +5,11 @@
 - owner repo: `devflow-release-service`
 - authoritative model file: `pkg/model/manifest.go`
 - authoritative API doc: `docs/api-spec.md`
-- generated swagger: `docs/swagger.yaml` (transitional; still reflects legacy handler layer until API migration)
 
 ## Purpose
 
-`Manifest` 是 build 侧控制面资源。用户点击 build 后通过 `release-service` 创建，并触发 Tekton 执行。
-它冻结构建时需要的仓库地址与服务暴露快照。
+`Manifest` 表示一次打包完成后冻结下来的期望状态快照。
+它绑定交付产物本身，以及当时使用的配置 revision 和 runtime revision。
 
 ## Common base fields
 
@@ -25,95 +24,48 @@
 
 | Field | Type | Required | Writable | Description |
 |---|---|---|---|---|
-| `execution_intent_id` | `*uuid.UUID` | optional | system | 关联 build intent |
+| `execution_intent_id` | `*uuid.UUID` | optional | system | 关联的 build intent |
 | `application_id` | `uuid.UUID` | required | user | 目标应用 ID |
-| `name` | `string` | system-generated | system | manifest 名称 |
+| `configuration_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的配置 revision |
+| `runtime_spec_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的运行期望态 revision |
+| `name` | `string` | system-derived | system | manifest 名称 |
 | `branch` | `string` | optional | user | Git 分支；为空默认 `main` |
 | `repo_address` | `string` | system-derived | system | Git 仓库地址 |
-| `commit_hash` | `string` | optional | patch/user | 构建提交 hash |
-| `replica` | `*int32` | system-derived | system | 副本数快照 |
-| `digest` | `string` | optional | patch/user | 镜像 digest |
-| `type` | `ReleaseType` | system-derived | system | 发布策略类型 |
-| `services` | `[]ManifestService` | system-derived | system | 服务暴露快照 |
-| `pipeline_id` | `string` | system-generated | verify/system | Tekton pipeline/pipelinerun 标识 |
-| `steps` | `[]ManifestStep` | system-generated | verify/system | 构建步骤状态 |
-| `status` | `ManifestStatus` | system-defaulted | verify/system | Manifest 状态 |
-
-## Nested types
-
-### `ManifestStatus`
-- `Pending`
-- `Running`
-- `Succeeded`
-- `Failed`
-
-### `StepStatus`
-- `Pending`
-- `Running`
-- `Succeeded`
-- `Failed`
-
-### `ManifestStep`
-- `task_name: string`
-- `task_run: string`
-- `status: StepStatus`
-- `start_time: *time.Time`
-- `end_time: *time.Time`
-- `message: string`
-
-### `ManifestService`
-- `name: string`
-- `internet: Internet`
-- `ports: []Port`
-
-### Shared nested types
-- `ReleaseType`: `normal` / `canary` / `blue-green`
-- `Internet`: `internal` / `external`
-- `Port`: `name` / `port` / `target_port`
-
-## Lifecycle / status fields
-
-- public owner: `devflow-release-service`
-- writeback path: verify result ownership is in `devflow-verify-service`
-- default status on create: `Pending`
-- step source:
-  - create 时从 Tekton Pipeline 模板初始化 steps
-  - 执行中由 verify 更新
+| `commit_hash` | `string` | optional | system | 构建对应的 commit |
+| `digest` | `string` | optional | system | 构建产物 digest |
+| `pipeline_id` | `string` | optional | system | Tekton pipelineRun ID |
+| `steps` | `[]ManifestStep` | system-managed | system | 构建步骤状态 |
+| `status` | `ManifestStatus` | system-managed | system | 构建状态 |
 
 ## Create / update rules
 
 ### Create
-- entrypoint:
-  - `POST /api/v1/manifests`
-- current API behavior:
-  - handler 绑定整个 `model.Manifest`
-- practical required fields:
+- required:
   - `application_id`
-- defaults / derived values:
-  - `name` 自动生成
-  - `branch` 为空时默认 `main`
-  - `status` 初始化为 `Pending`
-  - `repo_address`, `replica`, `type`, `services` 从 app-service 元数据衍生
-- side effects:
-  - 创建 Tekton 相关资源
-  - 可能创建 build intent
+- optional:
+  - `configuration_revision_id`
+  - `runtime_spec_revision_id`
+  - `branch`
+- server-managed:
+  - `name`
+  - `repo_address`
+  - `status`
+  - `steps`
 
-### Patch
-- patch endpoint only supports:
+### Update
+- mutable fields:
   - `commit_hash`
   - `digest`
-
-### Update/writeback
-- verify may update:
-  - `pipeline_id`
-  - `steps`
-  - `status`
+- immutable snapshot bindings:
+  - `application_id`
+  - `configuration_revision_id`
+  - `runtime_spec_revision_id`
 
 ## Validation notes
 
 - `application_id` 必须引用存在的 `Application`
-- `pipeline_id` 可在后续 verify 阶段补写
-- `repo_address` 使用统一字段名，不再使用 `git_repo`
+- `repo_address` 从应用元数据派生
+- `Manifest` 不再拥有副本数、发布策略或 service 暴露快照
 
 ## Source pointers
 

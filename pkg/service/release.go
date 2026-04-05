@@ -24,9 +24,9 @@ import (
 var ReleaseService = &releaseService{}
 
 var (
-	ErrMissingRuntimeSpecRevision                      = errors.New("runtime_spec_revision_id is required")
-	ErrRuntimeSpecBindingMismatch                      = errors.New("runtime_spec_revision_id does not match release application and env")
-	runtimeLookupClient           runtimeclient.Lookup = runtimeclient.New("")
+	ErrManifestMissingRuntimeSpecRevision                      = errors.New("manifest runtime_spec_revision_id is required")
+	ErrRuntimeSpecBindingMismatch                              = errors.New("manifest runtime_spec_revision_id does not match release application and env")
+	runtimeLookupClient                   runtimeclient.Lookup = runtimeclient.New("")
 )
 
 type releaseService struct{}
@@ -35,40 +35,39 @@ func SetRuntimeClient(client runtimeclient.Lookup) {
 	runtimeLookupClient = client
 }
 
-func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, app *applicationProjection) {
+func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, env string) {
 	release.ApplicationID = manifest.ApplicationID
 	if release.Type == "" {
 		release.Type = model.ReleaseUpgrade
 	}
 	if release.Env == "" {
-		release.Env = "prod"
+		release.Env = env
 	}
 	release.Status = model.ReleasePending
 	if len(release.Steps) == 0 {
-		release.Steps = model.DefaultReleaseSteps(app.Type, release.Type)
+		release.Steps = model.DefaultReleaseSteps(model.Normal, release.Type)
 	}
 }
 
-func validateReleaseBinding(release *model.Release) error {
-	if release.RuntimeSpecRevisionID == nil || *release.RuntimeSpecRevisionID == uuid.Nil {
-		return ErrMissingRuntimeSpecRevision
+func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release *model.Release, manifest *model.Manifest) (string, error) {
+	if manifest.RuntimeSpecRevisionID == nil || *manifest.RuntimeSpecRevisionID == uuid.Nil {
+		return "", ErrManifestMissingRuntimeSpecRevision
 	}
-	return nil
-}
-
-func (s *releaseService) ensureRuntimeBinding(ctx context.Context, release *model.Release) error {
-	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *release.RuntimeSpecRevisionID)
+	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *manifest.RuntimeSpecRevisionID)
 	if err != nil {
-		return err
+		return "", err
 	}
 	spec, err := runtimeLookupClient.GetRuntimeSpec(ctx, revision.RuntimeSpecID)
 	if err != nil {
-		return err
+		return "", err
 	}
-	if spec.ApplicationID != release.ApplicationID || spec.Environment != release.Env {
-		return fmt.Errorf("%w: spec application=%s env=%s release application=%s env=%s", ErrRuntimeSpecBindingMismatch, spec.ApplicationID, spec.Environment, release.ApplicationID, release.Env)
+	if spec.ApplicationID != manifest.ApplicationID {
+		return "", fmt.Errorf("%w: spec application=%s manifest application=%s", ErrRuntimeSpecBindingMismatch, spec.ApplicationID, manifest.ApplicationID)
 	}
-	return nil
+	if release.Env != "" && release.Env != spec.Environment {
+		return "", fmt.Errorf("%w: spec env=%s release env=%s", ErrRuntimeSpecBindingMismatch, spec.Environment, release.Env)
+	}
+	return spec.Environment, nil
 }
 
 func (s *releaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
@@ -78,18 +77,12 @@ func (s *releaseService) Create(ctx context.Context, release *model.Release) (uu
 	if err != nil {
 		return uuid.Nil, err
 	}
-	app, err := ApplicationService.Get(ctx, manifest.ApplicationID)
+	env, err := s.resolveReleaseEnvironment(ctx, release, manifest)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	populateReleaseDefaults(release, manifest, app)
-	if err := validateReleaseBinding(release); err != nil {
-		return uuid.Nil, err
-	}
-	if err := s.ensureRuntimeBinding(ctx, release); err != nil {
-		return uuid.Nil, err
-	}
+	populateReleaseDefaults(release, manifest, env)
 	release.WithCreateDefault()
 	if err := s.insert(ctx, release); err != nil {
 		return uuid.Nil, err
@@ -120,9 +113,9 @@ func (s *releaseService) insert(ctx context.Context, release *model.Release) err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into releases (
-			id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
-		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), nullableUUIDPtr(release.RuntimeSpecRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
+			id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
 	return err
 }
 
@@ -146,7 +139,7 @@ func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model
 
 func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*model.Release, error) {
 	return scanRelease(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 		where id = $1 and deleted_at is null
 	`, id))
@@ -177,7 +170,7 @@ func (s *releaseService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]*model.Release, error) {
 	query := `
-		select id, execution_intent_id, configuration_id, configuration_revision_id, runtime_spec_revision_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 	`
 	clauses := make([]string, 0, 5)
@@ -404,9 +397,9 @@ func (s *releaseService) updateRow(ctx context.Context, release *model.Release) 
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update releases
-		set execution_intent_id=$2, configuration_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, application_id=$6, manifest_id=$7, env=$8, type=$9, steps=$10, status=$11, external_ref=$12, updated_at=$13, deleted_at=$14
+		set execution_intent_id=$2, application_id=$3, manifest_id=$4, env=$5, type=$6, steps=$7, status=$8, external_ref=$9, updated_at=$10, deleted_at=$11
 		where id = $1
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), nullableUUIDPtr(release.ConfigurationID), nullableUUIDPtr(release.ConfigurationRevisionID), nullableUUIDPtr(release.RuntimeSpecRevisionID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
 	if err != nil {
 		return err
 	}

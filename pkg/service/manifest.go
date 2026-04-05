@@ -42,15 +42,6 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 	if m.RepoAddress == "" {
 		m.RepoAddress = app.RepoURL
 	}
-	m.Replica = app.Replica
-	m.Type = app.Type
-	if len(m.Services) == 0 && len(app.Service.Ports) > 0 {
-		m.Services = []model.ManifestService{{
-			Name:     app.Name,
-			Internet: app.Internet,
-			Ports:    app.Service.Ports,
-		}}
-	}
 	m.Name = model.GenerateManifestVersion(app.Name)
 	m.Status = model.ManifestPending
 	m.WithCreateDefault()
@@ -82,19 +73,15 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 }
 
 func (s *manifestService) insert(ctx context.Context, m *model.Manifest) error {
-	servicesJSON, err := marshalJSON(m.Services, "[]")
-	if err != nil {
-		return err
-	}
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into manifests (
-			id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
-		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
-	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Replica, m.Digest, m.Type, servicesJSON, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
+			id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
 	return err
 }
 
@@ -163,7 +150,7 @@ func (s *manifestService) Update(ctx context.Context, m *model.Manifest) error {
 
 func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) ([]model.Manifest, error) {
 	query := `
-		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from manifests
 	`
 	clauses := make([]string, 0, 6)
@@ -217,7 +204,7 @@ func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) (
 
 func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
 	return scanManifest(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from manifests
 		where id = $1 and deleted_at is null
 	`, id))
@@ -332,7 +319,7 @@ func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName,
 
 func (s *manifestService) GetManifestByPipelineID(ctx context.Context, pipelineID string) (*model.Manifest, error) {
 	return scanManifest(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, name, branch, repo_address, commit_hash, replica, digest, type, services, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from manifests
 		where pipeline_id = $1 and deleted_at is null
 	`, pipelineID))
@@ -389,19 +376,15 @@ func (s *manifestService) updateStatusAndSteps(ctx context.Context, id uuid.UUID
 }
 
 func (s *manifestService) updateRow(ctx context.Context, m *model.Manifest) error {
-	servicesJSON, err := marshalJSON(m.Services, "[]")
-	if err != nil {
-		return err
-	}
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update manifests
-		set execution_intent_id=$2, application_id=$3, name=$4, branch=$5, repo_address=$6, commit_hash=$7, replica=$8, digest=$9, type=$10, services=$11, pipeline_id=$12, steps=$13, status=$14, updated_at=$15, deleted_at=$16
+		set execution_intent_id=$2, application_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, name=$6, branch=$7, repo_address=$8, commit_hash=$9, digest=$10, pipeline_id=$11, steps=$12, status=$13, updated_at=$14, deleted_at=$15
 		where id = $1
-	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Replica, m.Digest, m.Type, servicesJSON, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
 	if err != nil {
 		return err
 	}

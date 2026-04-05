@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"testing"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
@@ -10,18 +11,13 @@ import (
 func TestPopulateReleaseDefaultsPreservesProvidedEnv(t *testing.T) {
 	manifestID := uuid.New()
 	appID := uuid.New()
-	cfgID := uuid.New()
-	release := &model.Release{ManifestID: manifestID, ConfigurationID: &cfgID, Env: "staging"}
+	release := &model.Release{ManifestID: manifestID, Env: "staging"}
 	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationID: appID}
-	app := &applicationProjection{Name: "demo", ProjectName: "proj", Type: model.Normal}
 
-	populateReleaseDefaults(release, manifest, app)
+	populateReleaseDefaults(release, manifest, "prod")
 
 	if release.Env != "staging" {
 		t.Fatalf("got env %s want staging", release.Env)
-	}
-	if release.ConfigurationID == nil || *release.ConfigurationID != cfgID {
-		t.Fatalf("configuration_id was not preserved")
 	}
 }
 
@@ -30,9 +26,8 @@ func TestPopulateReleaseDefaultsFallsBackToProd(t *testing.T) {
 	appID := uuid.New()
 	release := &model.Release{ManifestID: manifestID}
 	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: manifestID}, Name: "demo-main", ApplicationID: appID}
-	app := &applicationProjection{Name: "demo", ProjectName: "proj", Type: model.Normal}
 
-	populateReleaseDefaults(release, manifest, app)
+	populateReleaseDefaults(release, manifest, "prod")
 
 	if release.Env != "prod" {
 		t.Fatalf("got env %s want prod", release.Env)
@@ -42,15 +37,16 @@ func TestPopulateReleaseDefaultsFallsBackToProd(t *testing.T) {
 	}
 }
 
-func TestValidateReleaseRequiresRuntimeSpecRevisionID(t *testing.T) {
+func TestResolveReleaseEnvironmentRequiresManifestRuntimeSpecRevisionID(t *testing.T) {
+	svc := &releaseService{}
+	manifest := &model.Manifest{ApplicationID: uuid.New()}
 	release := &model.Release{
-		ManifestID:    uuid.New(),
-		ApplicationID: uuid.New(),
-		Env:           "staging",
+		ManifestID: uuid.New(),
+		Env:        "staging",
 	}
 
-	err := validateReleaseBinding(release)
+	_, err := svc.resolveReleaseEnvironment(context.Background(), release, manifest)
 	if err == nil {
-		t.Fatalf("expected error when runtime_spec_revision_id is missing")
+		t.Fatalf("expected error when manifest runtime_spec_revision_id is missing")
 	}
 }

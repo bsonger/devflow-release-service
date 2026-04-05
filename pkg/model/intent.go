@@ -13,14 +13,6 @@ type Intent struct {
 	Status         IntentStatus `json:"status" db:"status"`
 	ResourceType   string       `json:"resource_type" db:"resource_type"`
 	ResourceID     uuid.UUID    `json:"resource_id" db:"resource_id"`
-	ApplicationID  uuid.UUID    `json:"application_id" db:"application_id"`
-	ManifestID     *uuid.UUID   `json:"manifest_id,omitempty" db:"manifest_id"`
-	ReleaseID      *uuid.UUID   `json:"release_id,omitempty" db:"release_id"`
-	ReleaseType    string       `json:"release_type,omitempty" db:"release_type"`
-	Env            string       `json:"env,omitempty" db:"env"`
-	RepoAddress    string       `json:"repo_address,omitempty" db:"repo_address"`
-	Branch         string       `json:"branch,omitempty" db:"branch"`
-	ExternalRef    string       `json:"external_ref,omitempty" db:"external_ref"`
 	TraceID        string       `json:"trace_id,omitempty" db:"trace_id"`
 	Message        string       `json:"message,omitempty" db:"message"`
 	LastError      string       `json:"last_error,omitempty" db:"last_error"`

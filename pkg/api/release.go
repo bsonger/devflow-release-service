@@ -37,7 +37,7 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 	release.WithCreateDefault()
 	id, err := service.ReleaseService.Create(c.Request.Context(), release)
 	if err != nil {
-		if errors.Is(err, service.ErrMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
+		if errors.Is(err, service.ErrManifestMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
 			return
 		}

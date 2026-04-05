@@ -27,18 +27,11 @@ type ReleaseListFilter struct {
 }
 
 type IntentListFilter struct {
-	Kind          string
-	Status        string
-	ResourceType  string
-	ReleaseType   string
-	Env           string
-	Branch        string
-	ClaimedBy     string
-	ExternalRef   string
-	ResourceID    *uuid.UUID
-	ApplicationID *uuid.UUID
-	ManifestID    *uuid.UUID
-	ReleaseID     *uuid.UUID
+	Kind         string
+	Status       string
+	ResourceType string
+	ClaimedBy    string
+	ResourceID   *uuid.UUID
 }
 
 func marshalJSON(value any, empty string) ([]byte, error) {

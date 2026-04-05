@@ -21,7 +21,7 @@ func NewIntentHandler() *IntentHandler {
 
 // List
 // @Summary 获取执行意图列表
-// @Description 按 kind、status、resource、application 等维度查询 execution intents
+// @Description 按 kind、status、resource 等维度查询 execution intents
 // @Tags Intent
 // @Success 200 {array} model.Intent
 // @Failure 400 {object} map[string]string
@@ -89,40 +89,11 @@ func buildIntentFilter(c *gin.Context) (service.IntentListFilter, error) {
 	if resourceType := strings.TrimSpace(c.Query("resource_type")); resourceType != "" {
 		filter.ResourceType = resourceType
 	}
-	releaseType := strings.TrimSpace(c.Query("release_type"))
-	if releaseType == "" {
-		releaseType = strings.TrimSpace(c.Query("job_type"))
-	}
-	if releaseType != "" {
-		filter.ReleaseType = releaseType
-	}
-	if env := strings.TrimSpace(c.Query("env")); env != "" {
-		filter.Env = env
-	}
-	if branch := strings.TrimSpace(c.Query("branch")); branch != "" {
-		filter.Branch = branch
-	}
 	if claimedBy := strings.TrimSpace(c.Query("claimed_by")); claimedBy != "" {
 		filter.ClaimedBy = claimedBy
 	}
-	if externalRef := strings.TrimSpace(c.Query("external_ref")); externalRef != "" {
-		filter.ExternalRef = externalRef
-	}
 
 	if err := setUUIDFilter(&filter.ResourceID, "resource_id", c.Query("resource_id")); err != nil {
-		return service.IntentListFilter{}, err
-	}
-	if err := setUUIDFilter(&filter.ApplicationID, "application_id", c.Query("application_id")); err != nil {
-		return service.IntentListFilter{}, err
-	}
-	if err := setUUIDFilter(&filter.ManifestID, "manifest_id", c.Query("manifest_id")); err != nil {
-		return service.IntentListFilter{}, err
-	}
-	releaseID := c.Query("release_id")
-	if releaseID == "" {
-		releaseID = c.Query("job_id")
-	}
-	if err := setUUIDFilter(&filter.ReleaseID, "release_id", releaseID); err != nil {
 		return service.IntentListFilter{}, err
 	}
 

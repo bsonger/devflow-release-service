@@ -9,7 +9,7 @@ import (
 
 func TestManifestContract(t *testing.T) {
 	typ := reflect.TypeOf(Manifest{})
-	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "Name", "Branch", "RepoAddress", "Services", "PipelineID", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "Name", "Branch", "RepoAddress", "PipelineID", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Manifest missing field %s", field)
@@ -18,7 +18,7 @@ func TestManifestContract(t *testing.T) {
 			t.Fatalf("Manifest.ApplicationID type = %v, want uuid.UUID", f.Type)
 		}
 	}
-	for _, removed := range []string{"ApplicationName", "GitRepo", "ConfigMaps", "Service", "Internet", "Envs"} {
+	for _, removed := range []string{"ApplicationName", "GitRepo", "ConfigMaps", "Service", "Internet", "Envs", "Replica", "Type", "Services"} {
 		if _, ok := typ.FieldByName(removed); ok {
 			t.Fatalf("Manifest should not expose legacy field %s", removed)
 		}
@@ -27,7 +27,7 @@ func TestManifestContract(t *testing.T) {
 
 func TestReleaseContract(t *testing.T) {
 	typ := reflect.TypeOf(Release{})
-	for _, field := range []string{"ExecutionIntentID", "ConfigurationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "ApplicationID", "ManifestID", "Env", "Type", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ManifestID", "Env", "Type", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Release missing field %s", field)
@@ -40,7 +40,7 @@ func TestReleaseContract(t *testing.T) {
 
 func TestIntentContract(t *testing.T) {
 	typ := reflect.TypeOf(Intent{})
-	for _, field := range []string{"ResourceID", "ApplicationID", "ManifestID", "ReleaseID", "RepoAddress", "Branch", "ExternalRef"} {
+	for _, field := range []string{"ResourceID", "TraceID", "Message", "LastError", "ClaimedBy", "AttemptCount"} {
 		if _, ok := typ.FieldByName(field); !ok {
 			t.Fatalf("Intent missing field %s", field)
 		}
