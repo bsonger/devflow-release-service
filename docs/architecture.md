@@ -91,3 +91,9 @@ Client
 - verify webhook / writeback ingress
 - platform UI aggregation ownership
 - environment-variable ownership outside configuration references
+
+## Swagger generation
+
+- Build image runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before compiling the binary.
+- Generated swagger files live under `docs/generated/swagger`; preserve them if you export the repo.
+- `scripts/export_service_repo.sh` expects the generated bundle in `docs/generated/swagger` when copying docs.
