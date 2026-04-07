@@ -32,6 +32,12 @@ func (m *Manifest) GeneratePipelineRun(pipelineName string, pvc string) *tknv1.P
 		},
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: pipelineName + "-run-",
+			Labels: map[string]string{
+				"devflow.manifest/id": m.ID.String(),
+			},
+			Annotations: map[string]string{
+				"devflow.manifest/id": m.ID.String(),
+			},
 		},
 		Spec: tknv1.PipelineRunSpec{
 			PipelineRef: &tknv1.PipelineRef{Name: pipelineName},
