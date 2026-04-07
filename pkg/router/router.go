@@ -15,6 +15,7 @@ type Module string
 
 const (
 	ModuleManifest Module = "manifest"
+	ModuleImage    Module = "image"
 	ModuleRelease  Module = "release"
 	ModuleIntent   Module = "intent"
 )
@@ -32,6 +33,7 @@ func NewRouter() *gin.Engine {
 		EnableSwagger: true,
 		Modules: []Module{
 			ModuleManifest,
+			ModuleImage,
 			ModuleRelease,
 			ModuleIntent,
 		},
@@ -103,6 +105,8 @@ func registerModules(api *gin.RouterGroup, opts Options) {
 		switch module {
 		case ModuleManifest:
 			RegisterManifestRoutes(api)
+		case ModuleImage:
+			RegisterImageRoutes(api)
 		case ModuleRelease:
 			RegisterReleaseRoutes(api)
 		case ModuleIntent:

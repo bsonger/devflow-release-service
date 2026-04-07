@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/bsonger/devflow-common/client/tekton"
+	"github.com/bsonger/devflow-release-service/pkg/api"
 	"github.com/bsonger/devflow-release-service/pkg/argoclient"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
@@ -33,6 +34,7 @@ type Config struct {
 	Otel      *model.OtelConfig           `mapstructure:"otel" json:"otel" yaml:"otel"`
 	Repo      *model.Repo                 `mapstructure:"repo" json:"repo" yaml:"repo"`
 	Runtime   *model.RuntimeServiceConfig `mapstructure:"runtime" json:"runtime" yaml:"runtime"`
+	Observer  *model.ObserverConfig       `mapstructure:"observer" json:"observer" yaml:"observer"`
 	Consul    *model.Consul               `mapstructure:"consul" json:"consul" yaml:"consul"`
 	Pyroscope string                      `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
@@ -103,6 +105,7 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 	if err != nil {
 		return shutdown, err
 	}
+	api.ObserverSharedToken = stringValue(config.Observer, func(v *model.ObserverConfig) string { return v.SharedToken })
 	service.SetRuntimeClient(runtimeclient.New(stringValue(config.Runtime, func(v *model.RuntimeServiceConfig) string { return v.BaseURL })))
 	model.InitConfigRepo(config.Repo)
 	return func(shutdownCtx context.Context) error {

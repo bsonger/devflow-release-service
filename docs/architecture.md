@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`devflow-release-service` is the control-plane owner for `Manifest`, `Release`, and `Intent`.
+`devflow-release-service` is the control-plane owner for `Image`/`Manifest`, `Release`, and `Intent`.
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
-It freezes build-time repository/service metadata into `Manifest`, binds release execution to configuration references, and submits build requests into the normalized Tekton pipeline `devflow-tekton-image-build`.
+It freezes build-time repository/service metadata into `Image` records backed by the current manifest store, binds release execution to configuration references, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and submits build requests into the normalized Tekton pipeline `devflow-tekton-image-build`.
 
 ## Architecture Style
 
@@ -89,7 +89,7 @@ Client
 
 - `Project` / `Application` metadata ownership
 - `Configuration` ownership
-- verify webhook / writeback ingress
+- verify-service domain ownership and verify ingress semantics
 - platform UI aggregation ownership
 - environment-variable ownership outside configuration references
 

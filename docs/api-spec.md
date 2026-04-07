@@ -15,6 +15,16 @@
 - `GET /api/v1/manifests/{id}`
 - `PATCH /api/v1/manifests/{id}`
 
+### `Image`
+- `GET /api/v1/images`
+- `POST /api/v1/images`
+- `GET /api/v1/images/{id}`
+- `PATCH /api/v1/images/{id}`
+
+### Observer writeback
+- `POST /api/v1/images/tekton/tasks`
+- `POST /api/v1/images/tekton/status`
+
 ### `Release`
 - `GET /api/v1/releases`
 - `POST /api/v1/releases`
@@ -28,6 +38,8 @@
 
 - `POST /api/v1/manifests` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
 - manifest creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
+- `POST /api/v1/images` is the product-facing alias for build record creation
+- observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
 - `repo_address` and manifest naming are resolved during manifest creation
 - `POST /api/v1/releases` accepts `manifest_id`, optional `env`, and optional release `type`
 - release creation validates that the referenced manifest has a valid `runtime_spec_revision_id` bound through runtime-service

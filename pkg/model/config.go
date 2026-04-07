@@ -38,3 +38,7 @@ type Repo struct {
 type RuntimeServiceConfig struct {
 	BaseURL string `mapstructure:"base_url" json:"base_url" yaml:"base_url"`
 }
+
+type ObserverConfig struct {
+	SharedToken string `mapstructure:"shared_token" json:"shared_token" yaml:"shared_token"`
+}

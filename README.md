@@ -9,6 +9,8 @@
 - persist control-plane lifecycle records
 - trigger execution-side resources through adapters
 - submit build requests to the repo-managed Tekton pipeline `devflow-tekton-image-build`
+- expose public `Image` APIs as the build-facing product surface
+- accept authenticated Tekton task/status writeback from `devflow-resource-observer`
 
 ## Tekton source of truth
 

@@ -73,3 +73,7 @@
 - handler: `pkg/api/manifest.go`
 - service: `pkg/service/manifest.go`
 - model: `pkg/model/manifest.go`
+
+## Image alias note
+
+The product-facing build surface now uses `Image` routes, but those APIs are backed by the same underlying `Manifest` persistence model during the transition.

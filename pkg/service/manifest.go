@@ -28,6 +28,10 @@ const (
 
 type manifestService struct{}
 
+func (s *manifestService) CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error) {
+	return s.CreateManifest(ctx, (*model.Manifest)(m))
+}
+
 func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest) (uuid.UUID, error) {
 	logger := loggingx.LoggerFromContext(ctx)
 	logger.Info("create manifest start",
