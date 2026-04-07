@@ -4,7 +4,7 @@
 
 `devflow-release-service` is the control-plane owner for `Image`/`Manifest`, `Release`, and `Intent`.
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
-It freezes build-time repository/service metadata into `Image` records backed by the current manifest store, binds release execution to configuration references, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and submits build requests into the normalized Tekton pipeline `devflow-tekton-image-build`.
+It freezes build-time repository/service metadata into `Image` records backed by the current manifest store, binds release execution to configuration references, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and in staging runs in direct execution mode so build requests immediately submit the normalized Tekton pipeline `devflow-tekton-image-build`.
 
 ## Architecture Style
 

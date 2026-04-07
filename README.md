@@ -11,6 +11,7 @@
 - submit build requests to the repo-managed Tekton pipeline `devflow-tekton-image-build`
 - expose public `Image` APIs as the build-facing product surface
 - accept authenticated Tekton task/status writeback from `devflow-resource-observer`
+- staging now runs in direct execution mode so image builds create Tekton `PipelineRun`s immediately
 
 ## Tekton source of truth
 
