@@ -25,7 +25,7 @@ func main() {
 		},
 		StartMetricsServer: observability.StartMetricsServer,
 		StartPprofServer:   observability.StartPprofServer,
-		ExecutionMode:      runtime.ExecutionModeIntent,
+		ExecutionMode:      runtime.ExecutionModeDirect,
 		RouteOptions: router.Options{
 			ServiceName:   "release-service",
 			EnableSwagger: true,
