@@ -8,6 +8,16 @@
 - receive build/release control commands
 - persist control-plane lifecycle records
 - trigger execution-side resources through adapters
+- submit build requests to the repo-managed Tekton pipeline `devflow-tekton-image-build`
+
+## Tekton source of truth
+
+Build-image Tekton resources now live in this repository:
+
+- `deploy/tekton/base/pipelines/`
+- `deploy/tekton/base/tasks/`
+
+Naming is normalized with the `devflow-tekton-` prefix.
 
 ## Local Run
 

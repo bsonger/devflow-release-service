@@ -1,0 +1,26 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-go-test
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  workspaces:
+    - name: source
+  steps:
+    - name: test
+      image: registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.6
+      env:
+        - name: HTTP_PROXY
+          value: http://192.168.1.2:7890
+        - name: HTTPS_PROXY
+          value: http://192.168.1.2:7890
+        - name: NO_PROXY
+          value: localhost,127.0.0.1,.svc,.cluster.local
+      script: |
+        set -e
+        cd $(workspaces.source.path)
+        go mod tidy
+        go test ./...

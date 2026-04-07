@@ -4,7 +4,7 @@
 
 `devflow-release-service` is the control-plane owner for `Manifest`, `Release`, and `Intent`.
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
-It freezes build-time repository/service metadata into `Manifest` and binds release execution to configuration references.
+It freezes build-time repository/service metadata into `Manifest`, binds release execution to configuration references, and submits build requests into the normalized Tekton pipeline `devflow-tekton-image-build`.
 
 ## Architecture Style
 
@@ -82,6 +82,7 @@ Client
 - PostgreSQL persistence
 - `devflow-service-common`
 - Tekton-related clients / resources
+- repo-managed Tekton pipeline/task YAML under `deploy/tekton/base`
 - Argo CD / Kubernetes adapters
 
 ## Non-Goals

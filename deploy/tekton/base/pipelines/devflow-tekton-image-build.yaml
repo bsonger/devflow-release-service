@@ -1,0 +1,102 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: devflow-tekton-image-build
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-pipeline
+spec:
+  params:
+    - name: manifest-id
+      type: string
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+      default: main
+    - name: image-registry
+      type: string
+    - name: name
+      type: string
+    - name: image-tag
+      type: string
+      default: latest
+    - name: DOCKERFILE
+      type: string
+      default: Dockerfile
+    - name: manifest-name
+      type: string
+    - name: devflow-api
+      type: string
+      default: http://devflow-release-service.devflow-staging.svc.cluster.local:8083
+  workspaces:
+    - name: source
+    - name: dockerconfig
+    - name: ssh
+  tasks:
+    - name: git-clone
+      taskRef:
+        kind: Task
+        name: devflow-tekton-git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source
+        - name: ssh
+          workspace: ssh
+    - name: image-build-and-push
+      runAfter:
+        - git-clone
+      taskRef:
+        kind: Task
+        name: devflow-tekton-image-build-and-push
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/$(params.name):$(params.image-tag)
+        - name: DOCKERFILE
+          value: $(params.DOCKERFILE)
+      workspaces:
+        - name: source
+          workspace: source
+        - name: dockerconfig
+          workspace: dockerconfig
+    - name: manifest-patch
+      runAfter:
+        - image-build-and-push
+      taskRef:
+        kind: Task
+        name: devflow-tekton-manifest-patch
+      params:
+        - name: manifest-id
+          value: $(params.manifest-id)
+        - name: devflow-api
+          value: $(params.devflow-api)
+        - name: commit-hash
+          value: $(tasks.git-clone.results.commit)
+        - name: image-digest
+          value: $(tasks.image-build-and-push.results.IMAGE_DIGEST)
+    - name: image-scan
+      runAfter:
+        - image-build-and-push
+      taskRef:
+        kind: Task
+        name: devflow-tekton-image-scan
+      params:
+        - name: IMAGE
+          value: $(params.image-registry)/$(params.name):$(params.image-tag)
+      workspaces:
+        - name: dockerconfig
+          workspace: dockerconfig
+  finally:
+    - name: notify
+      taskRef:
+        kind: Task
+        name: devflow-tekton-notify
+      params:
+        - name: message
+          value: "🎉 Pipeline $(context.pipelineRun.name) finished."

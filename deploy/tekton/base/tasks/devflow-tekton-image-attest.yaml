@@ -1,0 +1,47 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-image-attest
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  params:
+    - name: IMAGE
+      type: string
+    - name: DIGEST
+      type: string
+  workspaces:
+    - name: source
+    - name: dockerconfig
+      mountPath: /.docker/
+    - name: cosign-key
+  steps:
+    - name: attest
+      image: registry.cn-hangzhou.aliyuncs.com/devflow/ubuntu:v1
+      env:
+        - name: COSIGN_PASSWORD
+          value: "123456"
+        - name: DOCKER_CONFIG
+          value: /.docker/
+      script: |
+        IMAGE="$(params.IMAGE)"
+        DIGEST="$(params.DIGEST)"
+        SBOM_FILE="$(workspaces.source.path)/sbom/sbom.attestation.json"
+        KEY="$(workspaces.cosign-key.path)/cosign.key"
+
+        echo "🔐 Attesting SBOM to image ${IMAGE}@${DIGEST}"
+        if [ ! -f "${SBOM_FILE}" ]; then
+          echo "❌ SBOM file not found: ${SBOM_FILE}"
+          exit 1
+        fi
+
+        cosign attest \
+          --key "${KEY}" \
+          --type spdx \
+          --predicate "${SBOM_FILE}" \
+          --yes \
+          "${IMAGE}@${DIGEST}"
+
+        echo "✅ SBOM attestation completed"

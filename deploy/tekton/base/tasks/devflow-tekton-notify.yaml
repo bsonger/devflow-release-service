@@ -1,0 +1,17 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-notify
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  params:
+    - name: message
+      type: string
+  steps:
+    - name: echo
+      image: alpine:3.19
+      script: |
+        echo "$(params.message)"

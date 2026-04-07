@@ -1,0 +1,13 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - tasks/devflow-tekton-git-clone.yaml
+  - tasks/devflow-tekton-go-test.yaml
+  - tasks/devflow-tekton-image-build-and-push.yaml
+  - tasks/devflow-tekton-manifest-patch.yaml
+  - tasks/devflow-tekton-image-scan.yaml
+  - tasks/devflow-tekton-generate-sbom.yaml
+  - tasks/devflow-tekton-image-sign.yaml
+  - tasks/devflow-tekton-image-attest.yaml
+  - tasks/devflow-tekton-notify.yaml
+  - pipelines/devflow-tekton-image-build.yaml

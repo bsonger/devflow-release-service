@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 	"time"
@@ -21,7 +20,11 @@ import (
 
 var ManifestService = &manifestService{}
 
-const namespace = "tekton-pipelines"
+const (
+	tektonNamespace       = "tekton-pipelines"
+	tektonBuildPipeline   = "devflow-tekton-image-build"
+	tektonPVCGenerateName = "devflow-tekton-image-build"
+)
 
 type manifestService struct{}
 
@@ -99,7 +102,7 @@ func (s *manifestService) DispatchBuild(ctx context.Context, manifestID uuid.UUI
 func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) error {
 	logger := loggingx.LoggerFromContext(ctx)
 
-	pvc, err := tekton.CreatePVC(ctx, namespace, "devflow-ci", "local-path", "1Gi")
+	pvc, err := tekton.CreatePVC(ctx, tektonNamespace, tektonPVCGenerateName, "local-path", "1Gi")
 	if err != nil {
 		logger.Error("create pvc failed", zap.Error(err))
 		return err
@@ -108,13 +111,13 @@ func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) er
 	pctx, span := StartServiceSpan(ctx, "Tekton.CreatePipelineRun")
 	defer span.End()
 
-	pr := m.GeneratePipelineRun("devflow-ci", pvc.Name)
+	pr := m.GeneratePipelineRun(tektonBuildPipeline, pvc.Name)
 	sc := trace.SpanContextFromContext(pctx)
 	pr.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
 		model.SpanAnnotation:    sc.SpanID().String(),
 	}
-	pr, err = tekton.CreatePipelineRun(pctx, namespace, pr)
+	pr, err = tekton.CreatePipelineRun(pctx, tektonNamespace, pr)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
@@ -260,7 +263,6 @@ func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, task
 			manifest.Steps[i].EndTime = end
 		}
 		changed = true
-		break
 	}
 	if !changed {
 		return nil
@@ -273,9 +275,6 @@ func (s *manifestService) UpdateManifestStatus(ctx context.Context, pipelineID s
 	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
 	if err != nil {
 		return err
-	}
-	if manifest.Status == model.ManifestFailed || manifest.Status == model.ManifestSucceeded || manifest.Status == status {
-		return nil
 	}
 	manifest.Status = status
 	manifest.UpdatedAt = time.Now()
@@ -300,15 +299,13 @@ func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName,
 	}
 	changed := false
 	for i := range manifest.Steps {
-		if manifest.Steps[i].TaskName != taskName {
-			continue
+		if manifest.Steps[i].TaskName == taskName {
+			if manifest.Steps[i].TaskRun == taskRun {
+				return nil
+			}
+			manifest.Steps[i].TaskRun = taskRun
+			changed = true
 		}
-		if manifest.Steps[i].TaskRun != "" || manifest.Steps[i].Status == model.StepFailed || manifest.Steps[i].Status == model.StepSucceeded {
-			return nil
-		}
-		manifest.Steps[i].TaskRun = taskRun
-		changed = true
-		break
 	}
 	if !changed {
 		return nil
@@ -375,6 +372,18 @@ func (s *manifestService) updateStatusAndSteps(ctx context.Context, id uuid.UUID
 	return ensureRowsAffected(result)
 }
 
+func (s *manifestService) Delete(ctx context.Context, id uuid.UUID) error {
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set deleted_at = $2, updated_at = $2
+		where id = $1 and deleted_at is null
+	`, id, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
+}
+
 func (s *manifestService) updateRow(ctx context.Context, m *model.Manifest) error {
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
@@ -383,21 +392,10 @@ func (s *manifestService) updateRow(ctx context.Context, m *model.Manifest) erro
 	result, err := store.DB().ExecContext(ctx, `
 		update manifests
 		set execution_intent_id=$2, application_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, name=$6, branch=$7, repo_address=$8, commit_hash=$9, digest=$10, pipeline_id=$11, steps=$12, status=$13, updated_at=$14, deleted_at=$15
-		where id = $1
+		where id=$1 and deleted_at is null
 	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
 	if err != nil {
 		return err
 	}
 	return ensureRowsAffected(result)
-}
-
-func ensureRowsAffected(result sql.Result) error {
-	rows, err := result.RowsAffected()
-	if err != nil {
-		return err
-	}
-	if rows == 0 {
-		return sql.ErrNoRows
-	}
-	return nil
 }

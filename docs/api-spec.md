@@ -27,6 +27,7 @@
 ## Request Rules
 
 - `POST /api/v1/manifests` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
+- manifest creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
 - `repo_address` and manifest naming are resolved during manifest creation
 - `POST /api/v1/releases` accepts `manifest_id`, optional `env`, and optional release `type`
 - release creation validates that the referenced manifest has a valid `runtime_spec_revision_id` bound through runtime-service

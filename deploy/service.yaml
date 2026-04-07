@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: devflow-release-service
+  namespace: devflow-staging
+spec:
+  selector:
+    app.kubernetes.io/name: devflow-release-service
+  ports:
+    - name: http
+      port: 8083
+      targetPort: http
+  type: ClusterIP

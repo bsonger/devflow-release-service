@@ -83,3 +83,14 @@ func parseRequiredUUID(value sql.NullString) (uuid.UUID, error) {
 	}
 	return uuid.Parse(value.String)
 }
+
+func ensureRowsAffected(result sql.Result) error {
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
+}

@@ -1,0 +1,56 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-image-build-and-push
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  params:
+    - name: IMAGE
+      type: string
+    - name: DOCKERFILE
+      type: string
+      default: Dockerfile
+  results:
+    - name: IMAGE_DIGEST
+      type: string
+  workspaces:
+    - name: source
+    - name: dockerconfig
+      mountPath: /.docker/
+  steps:
+    - name: build-push
+      image: quay.io/buildah/stable:latest
+      imagePullPolicy: IfNotPresent
+      securityContext:
+        privileged: true
+      env:
+        - name: HTTP_PROXY
+          value: http://192.168.1.2:7890
+        - name: HTTPS_PROXY
+          value: http://192.168.1.2:7890
+        - name: NO_PROXY
+          value: localhost,127.0.0.1,.svc,.cluster.local
+        - name: REGISTRY_AUTH_FILE
+          value: /.docker/.dockerconfigjson
+      script: |
+        set -e
+        IMAGE="$(params.IMAGE)"
+        SRC="$(workspaces.source.path)"
+
+        echo "🔧 Build image ${IMAGE}"
+        buildah bud -f ${SRC}/$(params.DOCKERFILE) -t ${IMAGE} ${SRC}
+
+        echo "🚀 Push image to registry"
+        buildah push ${IMAGE} docker://${IMAGE}
+
+        buildah push \
+          --digestfile /tmp/digest \
+          ${IMAGE} \
+          docker://${IMAGE}
+
+        DIGEST=$(cat /tmp/digest)
+        echo "✅ Image digest: ${DIGEST}"
+        echo -n "${DIGEST}" > $(results.IMAGE_DIGEST.path)

@@ -1,0 +1,51 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-manifest-patch
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  description: Patch manifest with commit hash and image digest
+  params:
+    - name: manifest-id
+      type: string
+    - name: devflow-api
+      type: string
+      default: http://devflow-release-service.devflow-staging.svc.cluster.local:8083
+    - name: commit-hash
+      type: string
+      default: ""
+    - name: image-digest
+      type: string
+      default: ""
+  steps:
+    - name: patch
+      image: curlimages/curl:8.5.0
+      script: |
+        #!/bin/sh
+        set -e
+
+        COMMIT=$(printf "%s" "$(params.commit-hash)")
+        DIGEST=$(printf "%s" "$(params.image-digest)")
+
+        BODY="{"
+
+        if [ -n "$COMMIT" ]; then
+          BODY="$BODY\"commit_hash\":\"$COMMIT\","
+        fi
+
+        if [ -n "$DIGEST" ]; then
+          BODY="$BODY\"digest\":\"$DIGEST\","
+        fi
+
+        BODY=$(echo "$BODY" | sed 's/,$//')
+        BODY="$BODY}"
+
+        echo "PATCH body: $BODY"
+
+        curl -sS -X PATCH \
+          -H "Content-Type: application/json" \
+          -d "$BODY" \
+          "$(params.devflow-api)/api/v1/manifests/$(params.manifest-id)"
