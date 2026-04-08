@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"strings"
 	"time"
@@ -27,6 +28,10 @@ const (
 )
 
 type imageService struct{}
+
+type sqlExecContexter interface {
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
+}
 
 func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error) {
 	logger := loggingx.LoggerFromContext(ctx)
@@ -86,6 +91,9 @@ func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UU
 }
 
 func (s *imageService) insert(ctx context.Context, m *model.Image) error {
+	if err := archiveActiveImageByName(ctx, store.DB(), m, time.Now()); err != nil {
+		return err
+	}
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
@@ -95,6 +103,18 @@ func (s *imageService) insert(ctx context.Context, m *model.Image) error {
 			id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
+	return err
+}
+
+func archiveActiveImageByName(ctx context.Context, execer sqlExecContexter, image *model.Image, now time.Time) error {
+	if image == nil || image.ApplicationID == uuid.Nil || image.Name == "" {
+		return nil
+	}
+	_, err := execer.ExecContext(ctx, `
+		update images
+		set deleted_at = $3, updated_at = $3
+		where application_id = $1 and name = $2 and deleted_at is null
+	`, image.ApplicationID, image.Name, now)
 	return err
 }
 
