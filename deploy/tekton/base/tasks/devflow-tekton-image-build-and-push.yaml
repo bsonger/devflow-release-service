@@ -27,6 +27,7 @@ spec:
     - name: source
     - name: dockerconfig
       mountPath: /.docker/
+    - name: ssh
   steps:
     - name: build-push
       image: quay.io/buildah/stable:latest
@@ -50,6 +51,17 @@ spec:
         fi
         IMAGE="$(params.IMAGE_REPOSITORY):${TAG}"
         SRC="$(workspaces.source.path)"
+        SSH_DIR="${SRC}/.tekton-ssh"
+
+        cleanup() {
+          rm -rf "${SSH_DIR}"
+        }
+        trap cleanup EXIT
+
+        mkdir -p "${SSH_DIR}"
+        cp "$(workspaces.ssh.path)/id_rsa" "${SSH_DIR}/id_rsa"
+        chmod 600 "${SSH_DIR}/id_rsa"
+        ssh-keyscan github.com > "${SSH_DIR}/known_hosts"
 
         echo "🔧 Build image ${IMAGE}"
         buildah bud -f ${SRC}/$(params.DOCKERFILE) -t ${IMAGE} ${SRC}

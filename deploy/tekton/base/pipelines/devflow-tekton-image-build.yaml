@@ -69,6 +69,8 @@ spec:
           workspace: source
         - name: dockerconfig
           workspace: dockerconfig
+        - name: ssh
+          workspace: ssh
     - name: image-patch
       runAfter:
         - image-build-and-push

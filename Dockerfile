@@ -3,6 +3,13 @@ FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.7 AS builder
 WORKDIR /app
 
 ENV GOPROXY=https://goproxy.cn,direct
+ENV GOPRIVATE=github.com/bsonger/*
+
+COPY .tekton-ssh /root/.ssh
+RUN chmod 700 /root/.ssh && \
+    chmod 600 /root/.ssh/id_rsa && \
+    test -f /root/.ssh/known_hosts && chmod 644 /root/.ssh/known_hosts && \
+    git config --global url."ssh://git@github.com/".insteadOf https://github.com/
 
 RUN go install github.com/swaggo/swag/cmd/swag@latest
 
@@ -10,6 +17,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
+RUN rm -rf /root/.ssh /app/.tekton-ssh
 
 RUN GOROOT=$(go env GOROOT) swag init -g cmd/main.go --parseDependency -o docs/generated/swagger
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o devflow-release-service ./cmd
