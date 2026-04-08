@@ -45,6 +45,7 @@ func TestGeneratePipelineRunParamsUsesConfigDrivenRegistryAndTarget(t *testing.T
 		ImageRegistryConfig{Registry: "registry.cn-hangzhou.aliyuncs.com", Namespace: "devflow"},
 		"Portal API",
 		image.Branch,
+		"",
 		time.Date(2026, 4, 8, 13, 5, 0, 0, time.UTC),
 	)
 	if err != nil {

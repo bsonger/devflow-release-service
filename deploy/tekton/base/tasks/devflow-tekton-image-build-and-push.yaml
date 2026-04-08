@@ -8,13 +8,20 @@ metadata:
     app.kubernetes.io/component: tekton-task
 spec:
   params:
-    - name: IMAGE
+    - name: IMAGE_REPOSITORY
       type: string
+    - name: IMAGE_TAG
+      type: string
+    - name: GIT_TAG
+      type: string
+      default: ""
     - name: DOCKERFILE
       type: string
       default: Dockerfile
   results:
     - name: IMAGE_DIGEST
+      type: string
+    - name: IMAGE_TAG
       type: string
   workspaces:
     - name: source
@@ -37,7 +44,11 @@ spec:
           value: /.docker/.dockerconfigjson
       script: |
         set -e
-        IMAGE="$(params.IMAGE)"
+        TAG="$(params.GIT_TAG)"
+        if [ -z "${TAG}" ]; then
+          TAG="$(params.IMAGE_TAG)"
+        fi
+        IMAGE="$(params.IMAGE_REPOSITORY):${TAG}"
         SRC="$(workspaces.source.path)"
 
         echo "🔧 Build image ${IMAGE}"
@@ -54,3 +65,4 @@ spec:
         DIGEST=$(cat /tmp/digest)
         echo "✅ Image digest: ${DIGEST}"
         echo -n "${DIGEST}" > $(results.IMAGE_DIGEST.path)
+        echo -n "${TAG}" > $(results.IMAGE_TAG.path)

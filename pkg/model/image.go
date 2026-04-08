@@ -10,6 +10,7 @@ type Image struct {
 	ConfigurationRevisionID *uuid.UUID `json:"configuration_revision_id,omitempty" db:"configuration_revision_id"`
 	RuntimeSpecRevisionID   *uuid.UUID `json:"runtime_spec_revision_id,omitempty" db:"runtime_spec_revision_id"`
 	Name                    string     `json:"name" db:"name"`
+	Tag                     string     `json:"tag,omitempty" db:"tag"`
 	Branch                  string     `json:"branch" db:"branch"`
 	RepoAddress             string     `json:"repo_address" db:"repo_address"`
 	CommitHash              string     `json:"commit_hash,omitempty" db:"commit_hash"`
@@ -29,10 +30,11 @@ type CreateImageRequest struct {
 type PatchImageRequest struct {
 	CommitHash string `json:"commit_hash,omitempty"`
 	Digest     string `json:"digest,omitempty"`
+	Tag        string `json:"tag,omitempty"`
 }
 
 func (r *PatchImageRequest) IsEmpty() bool {
-	return r.CommitHash == "" && r.Digest == ""
+	return r.CommitHash == "" && r.Digest == "" && r.Tag == ""
 }
 
 func (m *Image) CollectionName() string { return "images" }

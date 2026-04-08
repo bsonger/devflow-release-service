@@ -20,6 +20,9 @@ spec:
     - name: image-digest
       type: string
       default: ""
+    - name: image-tag
+      type: string
+      default: ""
   steps:
     - name: patch
       image: curlimages/curl:8.5.0
@@ -29,6 +32,7 @@ spec:
 
         COMMIT=$(printf "%s" "$(params.commit-hash)")
         DIGEST=$(printf "%s" "$(params.image-digest)")
+        TAG=$(printf "%s" "$(params.image-tag)")
 
         BODY="{"
 
@@ -38,6 +42,10 @@ spec:
 
         if [ -n "$DIGEST" ]; then
           BODY="$BODY\"digest\":\"$DIGEST\","
+        fi
+
+        if [ -n "$TAG" ]; then
+          BODY="$BODY\"tag\":\"$TAG\","
         fi
 
         BODY=$(echo "$BODY" | sed 's/,$//')

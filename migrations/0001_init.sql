@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS images (
   configuration_revision_id UUID NULL,
   runtime_spec_revision_id UUID NULL,
   name TEXT NOT NULL,
+  tag TEXT NOT NULL DEFAULT '',
   branch TEXT NOT NULL,
   repo_address TEXT NOT NULL,
   commit_hash TEXT NOT NULL DEFAULT '',
@@ -43,10 +44,6 @@ CREATE TABLE IF NOT EXISTS images (
   updated_at TIMESTAMPTZ NOT NULL,
   deleted_at TIMESTAMPTZ NULL
 );
-
-CREATE UNIQUE INDEX IF NOT EXISTS uq_images_application_name_active
-  ON images (application_id, name)
-  WHERE deleted_at IS NULL;
 
 CREATE UNIQUE INDEX IF NOT EXISTS uq_images_pipeline_id_active
   ON images (pipeline_id)

@@ -56,8 +56,12 @@ spec:
         kind: Task
         name: devflow-tekton-image-build-and-push
       params:
-        - name: IMAGE
-          value: $(params.image-registry)/$(params.name):$(params.image-tag)
+        - name: IMAGE_REPOSITORY
+          value: $(params.image-registry)/$(params.name)
+        - name: IMAGE_TAG
+          value: $(params.image-tag)
+        - name: GIT_TAG
+          value: $(tasks.git-clone.results.git-tag)
         - name: DOCKERFILE
           value: $(params.DOCKERFILE)
       workspaces:
@@ -80,6 +84,8 @@ spec:
           value: $(tasks.git-clone.results.commit)
         - name: image-digest
           value: $(tasks.image-build-and-push.results.IMAGE_DIGEST)
+        - name: image-tag
+          value: $(tasks.image-build-and-push.results.IMAGE_TAG)
     - name: image-scan
       runAfter:
         - image-build-and-push

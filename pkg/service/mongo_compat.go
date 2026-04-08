@@ -39,6 +39,7 @@ func scanImage(scanner interface {
 		&configurationRevisionID,
 		&runtimeSpecRevisionID,
 		&item.Name,
+		&item.Tag,
 		&item.Branch,
 		&item.RepoAddress,
 		&item.CommitHash,

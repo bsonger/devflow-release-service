@@ -23,6 +23,8 @@ type ImageTarget struct {
 	Ref  string
 }
 
+var imageTagSanitizer = regexp.MustCompile(`[^A-Za-z0-9_.-]+`)
+
 func (c ImageRegistryConfig) Repository() string {
 	registry := strings.TrimSuffix(strings.TrimSpace(c.Registry), "/")
 	namespace := strings.Trim(strings.TrimSpace(c.Namespace), "/")
@@ -32,7 +34,7 @@ func (c ImageRegistryConfig) Repository() string {
 	return registry + "/" + namespace
 }
 
-func BuildImageTarget(cfg ImageRegistryConfig, applicationName, branch string, now time.Time) (ImageTarget, error) {
+func BuildImageTarget(cfg ImageRegistryConfig, applicationName, branch, tag string, now time.Time) (ImageTarget, error) {
 	baseName := normalizeImageSegment(applicationName)
 	if baseName == "" {
 		return ImageTarget{}, fmt.Errorf("application name produced empty image name")
@@ -53,7 +55,10 @@ func BuildImageTarget(cfg ImageRegistryConfig, applicationName, branch string, n
 		return ImageTarget{}, fmt.Errorf("image registry repository is empty")
 	}
 
-	tag := now.UTC().Format("20060102-150405")
+	tag = normalizeImageTag(tag)
+	if tag == "" {
+		tag = now.UTC().Format("20060102-150405")
+	}
 	return ImageTarget{
 		Name: imageName,
 		Tag:  tag,
@@ -69,4 +74,13 @@ func normalizeImageSegment(value string) string {
 	trimmed = imageSegmentSanitizer.ReplaceAllString(trimmed, "-")
 	trimmed = imageDashCollapser.ReplaceAllString(trimmed, "-")
 	return strings.Trim(trimmed, "-")
+}
+
+func normalizeImageTag(value string) string {
+	trimmed := strings.TrimSpace(value)
+	trimmed = strings.ReplaceAll(trimmed, "/", "-")
+	trimmed = strings.ReplaceAll(trimmed, " ", "-")
+	trimmed = imageTagSanitizer.ReplaceAllString(trimmed, "-")
+	trimmed = strings.Trim(trimmed, ".-")
+	return trimmed
 }

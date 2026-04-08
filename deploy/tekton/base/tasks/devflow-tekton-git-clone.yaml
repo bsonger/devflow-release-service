@@ -17,6 +17,9 @@ spec:
     - name: commit
       description: git commit SHA
       type: string
+    - name: git-tag
+      description: exact git tag on HEAD, empty when absent
+      type: string
   workspaces:
     - name: output
     - name: ssh
@@ -32,3 +35,8 @@ spec:
         cd $(workspaces.output.path)
         git checkout $(params.revision)
         git rev-parse HEAD | tee $(results.commit.path)
+        if TAG=$(git describe --tags --exact-match HEAD 2>/dev/null); then
+          printf "%s" "$TAG" | tee $(results.git-tag.path)
+        else
+          : > $(results.git-tag.path)
+        fi

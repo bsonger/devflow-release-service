@@ -9,7 +9,7 @@ import (
 
 func TestImageContract(t *testing.T) {
 	typ := reflect.TypeOf(Image{})
-	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "Name", "Branch", "RepoAddress", "PipelineID", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "Name", "Tag", "Branch", "RepoAddress", "PipelineID", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Image missing field %s", field)

@@ -2,7 +2,6 @@ package service
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"strings"
 	"time"
@@ -29,10 +28,6 @@ const (
 
 type imageService struct{}
 
-type sqlExecContexter interface {
-	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
-}
-
 func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error) {
 	logger := loggingx.LoggerFromContext(ctx)
 	logger.Info("create image start",
@@ -58,12 +53,13 @@ func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UU
 		logger.Error("image registry config invalid", zap.Error(err))
 		return uuid.Nil, err
 	}
-	imageTarget, err := model.BuildImageTarget(registryConfig, app.Name, m.Branch, time.Now())
+	imageTarget, err := model.BuildImageTarget(registryConfig, app.Name, m.Branch, "", time.Now())
 	if err != nil {
 		logger.Error("build image target failed", zap.Error(err))
 		return uuid.Nil, err
 	}
 	m.Name = imageTarget.Name
+	m.Tag = imageTarget.Tag
 	m.Status = model.ImagePending
 	m.WithCreateDefault()
 
@@ -91,30 +87,15 @@ func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UU
 }
 
 func (s *imageService) insert(ctx context.Context, m *model.Image) error {
-	if err := archiveActiveImageByName(ctx, store.DB(), m, time.Now()); err != nil {
-		return err
-	}
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into images (
-			id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
-		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
-	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
-	return err
-}
-
-func archiveActiveImageByName(ctx context.Context, execer sqlExecContexter, image *model.Image, now time.Time) error {
-	if image == nil || image.ApplicationID == uuid.Nil || image.Name == "" {
-		return nil
-	}
-	_, err := execer.ExecContext(ctx, `
-		update images
-		set deleted_at = $3, updated_at = $3
-		where application_id = $1 and name = $2 and deleted_at is null
-	`, image.ApplicationID, image.Name, now)
+			id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, tag, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Tag, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
 	return err
 }
 
@@ -135,11 +116,10 @@ func (s *imageService) submitBuild(ctx context.Context, m *model.Image) error {
 	if err != nil {
 		return err
 	}
-	tag := time.Now().UTC().Format("20060102-150405")
 	imageTarget := model.ImageTarget{
 		Name: m.Name,
-		Tag:  tag,
-		Ref:  registryConfig.Repository() + "/" + m.Name + ":" + tag,
+		Tag:  m.Tag,
+		Ref:  registryConfig.Repository() + "/" + m.Name + ":" + m.Tag,
 	}
 
 	pvc, err := localtekton.CreatePVC(ctx, tektonNamespace, tektonPVCGenerateName, "local-path", "1Gi")
@@ -189,7 +169,7 @@ func (s *imageService) Update(ctx context.Context, m *model.Image) error {
 
 func (s *imageService) List(ctx context.Context, filter ImageListFilter) ([]model.Image, error) {
 	query := `
-		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, tag, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from images
 	`
 	clauses := make([]string, 0, 6)
@@ -243,7 +223,7 @@ func (s *imageService) List(ctx context.Context, filter ImageListFilter) ([]mode
 
 func (s *imageService) Get(ctx context.Context, id uuid.UUID) (*model.Image, error) {
 	return scanImage(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, tag, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from images
 		where id = $1 and deleted_at is null
 	`, id))
@@ -352,7 +332,7 @@ func (s *imageService) BindTaskRun(ctx context.Context, pipelineID, taskName, ta
 
 func (s *imageService) GetImageByPipelineID(ctx context.Context, pipelineID string) (*model.Image, error) {
 	return scanImage(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, tag, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		from images
 		where pipeline_id = $1 and deleted_at is null
 	`, pipelineID))
@@ -371,6 +351,9 @@ func (s *imageService) Patch(ctx context.Context, id uuid.UUID, patch *model.Pat
 	}
 	if patch.CommitHash != "" {
 		image.CommitHash = patch.CommitHash
+	}
+	if patch.Tag != "" {
+		image.Tag = patch.Tag
 	}
 	image.UpdatedAt = time.Now()
 	return s.updateRow(ctx, image)
@@ -427,9 +410,9 @@ func (s *imageService) updateRow(ctx context.Context, m *model.Image) error {
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update images
-		set execution_intent_id=$2, application_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, name=$6, branch=$7, repo_address=$8, commit_hash=$9, digest=$10, pipeline_id=$11, steps=$12, status=$13, updated_at=$14, deleted_at=$15
+		set execution_intent_id=$2, application_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, name=$6, tag=$7, branch=$8, repo_address=$9, commit_hash=$10, digest=$11, pipeline_id=$12, steps=$13, status=$14, updated_at=$15, deleted_at=$16
 		where id=$1 and deleted_at is null
-	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
+	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Tag, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)
 	if err != nil {
 		return err
 	}
