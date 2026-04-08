@@ -11,15 +11,12 @@ RUN chmod 700 /root/.ssh && \
     test -f /root/.ssh/known_hosts && chmod 644 /root/.ssh/known_hosts && \
     git config --global url."ssh://git@github.com/".insteadOf https://github.com/
 
-RUN go install github.com/swaggo/swag/cmd/swag@latest
-
 COPY go.mod go.sum ./
 RUN go mod download
 
 COPY . .
 RUN rm -rf /root/.ssh /app/.tekton-ssh
 
-RUN GOROOT=$(go env GOROOT) swag init -g cmd/main.go --parseDependency -o docs/generated/swagger
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o devflow-release-service ./cmd
 
 FROM alpine:3.19
