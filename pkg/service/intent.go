@@ -20,22 +20,22 @@ type intentService struct{}
 
 var ErrIntentNotFound = errors.New("intent not found")
 
-func (s *intentService) CreateBuildIntent(ctx context.Context, manifest *model.Manifest) (uuid.UUID, error) {
+func (s *intentService) CreateBuildIntent(ctx context.Context, image *model.Image) (uuid.UUID, error) {
 	intent := &model.Intent{
 		Kind:         model.IntentKindBuild,
 		Status:       model.IntentPending,
-		ResourceType: "manifest",
-		ResourceID:   manifest.ID,
+		ResourceType: "image",
+		ResourceID:   image.ID,
 	}
 	intent.WithCreateDefault()
 	if err := s.insert(ctx, intent); err != nil {
 		return uuid.Nil, err
 	}
-	if err := s.bindIntentToManifest(ctx, manifest.ID, intent.ID); err != nil {
+	if err := s.bindIntentToImage(ctx, image.ID, intent.ID); err != nil {
 		return intent.ID, err
 	}
-	manifest.ExecutionIntentID = uuidPtr(intent.ID)
-	loggingx.LoggerWithContext(ctx).Info("build intent created", zap.String("intent_id", intent.ID.String()), zap.String("manifest_id", manifest.ID.String()))
+	image.ExecutionIntentID = uuidPtr(intent.ID)
+	loggingx.LoggerWithContext(ctx).Info("build intent created", zap.String("intent_id", intent.ID.String()), zap.String("image_id", image.ID.String()))
 	return intent.ID, nil
 }
 
@@ -231,12 +231,12 @@ func (s *intentService) UpdateStatusByResource(ctx context.Context, kind model.I
 	return ensureRowsAffected(result)
 }
 
-func (s *intentService) bindIntentToManifest(ctx context.Context, manifestID, intentID uuid.UUID) error {
+func (s *intentService) bindIntentToImage(ctx context.Context, imageID, intentID uuid.UUID) error {
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set execution_intent_id = $2, updated_at = $3
 		where id = $1 and deleted_at is null
-	`, manifestID, intentID, time.Now())
+	`, imageID, intentID, time.Now())
 	if err != nil {
 		return err
 	}

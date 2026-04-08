@@ -8,5 +8,5 @@
 - replica: int
 - internet: internal | external
 - status: string
-- active_manifest_id: string
-- active_manifest_name: string
+- active_image_id: string
+- active_image_name: string

@@ -17,8 +17,8 @@ import (
 
 type stubImageService struct {
 	createFn func(context.Context, *model.Image) (uuid.UUID, error)
-	listFn   func(context.Context, service.ManifestListFilter) ([]model.Manifest, error)
-	getFn    func(context.Context, uuid.UUID) (*model.Manifest, error)
+	listFn   func(context.Context, service.ImageListFilter) ([]model.Image, error)
+	getFn    func(context.Context, uuid.UUID) (*model.Image, error)
 	patchFn  func(context.Context, uuid.UUID, *model.PatchImageRequest) error
 }
 
@@ -26,11 +26,11 @@ func (s stubImageService) CreateImage(ctx context.Context, m *model.Image) (uuid
 	return s.createFn(ctx, m)
 }
 
-func (s stubImageService) List(ctx context.Context, filter service.ManifestListFilter) ([]model.Manifest, error) {
+func (s stubImageService) List(ctx context.Context, filter service.ImageListFilter) ([]model.Image, error) {
 	return s.listFn(ctx, filter)
 }
 
-func (s stubImageService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
+func (s stubImageService) Get(ctx context.Context, id uuid.UUID) (*model.Image, error) {
 	return s.getFn(ctx, id)
 }
 
@@ -78,8 +78,8 @@ func TestListImagesReturnsEnvelope(t *testing.T) {
 	id := uuid.New()
 	handler := &ImageHandler{
 		svc: stubImageService{
-			listFn: func(_ context.Context, _ service.ManifestListFilter) ([]model.Manifest, error) {
-				return []model.Manifest{{BaseModel: model.BaseModel{ID: id}, Name: "image-1", Branch: "main"}}, nil
+			listFn: func(_ context.Context, _ service.ImageListFilter) ([]model.Image, error) {
+				return []model.Image{{BaseModel: model.BaseModel{ID: id}, Name: "image-1", Branch: "main"}}, nil
 			},
 		},
 	}
@@ -109,11 +109,11 @@ func TestGetImageReturnsEnvelope(t *testing.T) {
 	id := uuid.New()
 	handler := &ImageHandler{
 		svc: stubImageService{
-			getFn: func(_ context.Context, got uuid.UUID) (*model.Manifest, error) {
+			getFn: func(_ context.Context, got uuid.UUID) (*model.Image, error) {
 				if got != id {
 					t.Fatalf("unexpected id %s", got)
 				}
-				return &model.Manifest{BaseModel: model.BaseModel{ID: id}, Name: "image-1"}, nil
+				return &model.Image{BaseModel: model.BaseModel{ID: id}, Name: "image-1"}, nil
 			},
 		},
 	}

@@ -30,7 +30,6 @@ func main() {
 			ServiceName:   "release-service",
 			EnableSwagger: true,
 			Modules: []router.Module{
-				router.ModuleManifest,
 				router.ModuleImage,
 				router.ModuleRelease,
 				router.ModuleIntent,

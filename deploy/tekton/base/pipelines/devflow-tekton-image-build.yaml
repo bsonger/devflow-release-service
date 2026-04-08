@@ -8,7 +8,7 @@ metadata:
     app.kubernetes.io/component: tekton-pipeline
 spec:
   params:
-    - name: manifest-id
+    - name: image-id
       type: string
     - name: git-url
       type: string
@@ -25,7 +25,7 @@ spec:
     - name: DOCKERFILE
       type: string
       default: Dockerfile
-    - name: manifest-name
+    - name: image-name
       type: string
     - name: devflow-api
       type: string
@@ -65,15 +65,15 @@ spec:
           workspace: source
         - name: dockerconfig
           workspace: dockerconfig
-    - name: manifest-patch
+    - name: image-patch
       runAfter:
         - image-build-and-push
       taskRef:
         kind: Task
-        name: devflow-tekton-manifest-patch
+        name: devflow-tekton-image-patch
       params:
-        - name: manifest-id
-          value: $(params.manifest-id)
+        - name: image-id
+          value: $(params.image-id)
         - name: devflow-api
           value: $(params.devflow-api)
         - name: commit-hash

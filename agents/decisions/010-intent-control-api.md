@@ -8,5 +8,5 @@
   - 把 `execution_intent_id` 放进创建响应，可以避免客户端额外做一次模糊查询。
 - 影响：
   - `release-service` 现在同时承载 `Manifest`、`Release`、`Intent` 三类 release control-plane 资源。
-  - API 层可以直接按 `kind`、`status`、`application_id`、`manifest_id`、`release_id` 等字段查询 intent。
+  - API 层可以直接按 `kind`、`status`、`application_id`、`image_id`、`release_id` 等字段查询 intent。
   - 当前仍只暴露只读接口，没有开放 requeue / retry / cancel 这类有副作用的控制动作。

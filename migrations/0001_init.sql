@@ -25,7 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_execution_intents_status_kind
 CREATE INDEX IF NOT EXISTS idx_execution_intents_claimed_by
   ON execution_intents (claimed_by);
 
-CREATE TABLE IF NOT EXISTS manifests (
+CREATE TABLE IF NOT EXISTS images (
   id UUID PRIMARY KEY,
   execution_intent_id UUID NULL,
   application_id UUID NOT NULL,
@@ -44,25 +44,25 @@ CREATE TABLE IF NOT EXISTS manifests (
   deleted_at TIMESTAMPTZ NULL
 );
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_manifests_application_name_active
-  ON manifests (application_id, name)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_images_application_name_active
+  ON images (application_id, name)
   WHERE deleted_at IS NULL;
 
-CREATE UNIQUE INDEX IF NOT EXISTS uq_manifests_pipeline_id_active
-  ON manifests (pipeline_id)
+CREATE UNIQUE INDEX IF NOT EXISTS uq_images_pipeline_id_active
+  ON images (pipeline_id)
   WHERE pipeline_id <> '' AND deleted_at IS NULL;
 
-CREATE INDEX IF NOT EXISTS idx_manifests_application_id
-  ON manifests (application_id);
+CREATE INDEX IF NOT EXISTS idx_images_application_id
+  ON images (application_id);
 
-CREATE INDEX IF NOT EXISTS idx_manifests_execution_intent_id
-  ON manifests (execution_intent_id);
+CREATE INDEX IF NOT EXISTS idx_images_execution_intent_id
+  ON images (execution_intent_id);
 
 CREATE TABLE IF NOT EXISTS releases (
   id UUID PRIMARY KEY,
   execution_intent_id UUID NULL,
   application_id UUID NOT NULL,
-  manifest_id UUID NOT NULL,
+  image_id UUID NOT NULL,
   env TEXT NOT NULL,
   type TEXT NOT NULL,
   steps JSONB NOT NULL DEFAULT '[]'::jsonb,
@@ -73,8 +73,8 @@ CREATE TABLE IF NOT EXISTS releases (
   deleted_at TIMESTAMPTZ NULL
 );
 
-CREATE INDEX IF NOT EXISTS idx_releases_manifest_id
-  ON releases (manifest_id);
+CREATE INDEX IF NOT EXISTS idx_releases_image_id
+  ON releases (image_id);
 
 CREATE INDEX IF NOT EXISTS idx_releases_application_id
   ON releases (application_id);

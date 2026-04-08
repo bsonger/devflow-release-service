@@ -24,8 +24,8 @@ import (
 var ReleaseService = &releaseService{}
 
 var (
-	ErrManifestMissingRuntimeSpecRevision                      = errors.New("manifest runtime_spec_revision_id is required")
-	ErrRuntimeSpecBindingMismatch                              = errors.New("manifest runtime_spec_revision_id does not match release application and env")
+	ErrImageMissingRuntimeSpecRevision                         = errors.New("image runtime_spec_revision_id is required")
+	ErrRuntimeSpecBindingMismatch                              = errors.New("image runtime_spec_revision_id does not match release application and env")
 	runtimeLookupClient                   runtimeclient.Lookup = runtimeclient.New("")
 )
 
@@ -35,8 +35,8 @@ func SetRuntimeClient(client runtimeclient.Lookup) {
 	runtimeLookupClient = client
 }
 
-func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, env string) {
-	release.ApplicationID = manifest.ApplicationID
+func populateReleaseDefaults(release *model.Release, image *model.Image, env string) {
+	release.ApplicationID = image.ApplicationID
 	if release.Type == "" {
 		release.Type = model.ReleaseUpgrade
 	}
@@ -49,11 +49,11 @@ func populateReleaseDefaults(release *model.Release, manifest *model.Manifest, e
 	}
 }
 
-func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release *model.Release, manifest *model.Manifest) (string, error) {
-	if manifest.RuntimeSpecRevisionID == nil || *manifest.RuntimeSpecRevisionID == uuid.Nil {
-		return "", ErrManifestMissingRuntimeSpecRevision
+func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release *model.Release, image *model.Image) (string, error) {
+	if image.RuntimeSpecRevisionID == nil || *image.RuntimeSpecRevisionID == uuid.Nil {
+		return "", ErrImageMissingRuntimeSpecRevision
 	}
-	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *manifest.RuntimeSpecRevisionID)
+	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *image.RuntimeSpecRevisionID)
 	if err != nil {
 		return "", err
 	}
@@ -61,8 +61,8 @@ func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release 
 	if err != nil {
 		return "", err
 	}
-	if spec.ApplicationID != manifest.ApplicationID {
-		return "", fmt.Errorf("%w: spec application=%s manifest application=%s", ErrRuntimeSpecBindingMismatch, spec.ApplicationID, manifest.ApplicationID)
+	if spec.ApplicationID != image.ApplicationID {
+		return "", fmt.Errorf("%w: spec application=%s image application=%s", ErrRuntimeSpecBindingMismatch, spec.ApplicationID, image.ApplicationID)
 	}
 	if release.Env != "" && release.Env != spec.Environment {
 		return "", fmt.Errorf("%w: spec env=%s release env=%s", ErrRuntimeSpecBindingMismatch, spec.Environment, release.Env)
@@ -71,18 +71,18 @@ func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release 
 }
 
 func (s *releaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
-	log := loggingx.LoggerWithContext(ctx).With(zap.String("release.type", release.Type), zap.String("manifest.id", release.ManifestID.String()))
+	log := loggingx.LoggerWithContext(ctx).With(zap.String("release.type", release.Type), zap.String("image.id", release.ImageID.String()))
 
-	manifest, err := ManifestService.Get(ctx, release.ManifestID)
+	image, err := ImageService.Get(ctx, release.ImageID)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	env, err := s.resolveReleaseEnvironment(ctx, release, manifest)
+	env, err := s.resolveReleaseEnvironment(ctx, release, image)
 	if err != nil {
 		return uuid.Nil, err
 	}
 
-	populateReleaseDefaults(release, manifest, env)
+	populateReleaseDefaults(release, image, env)
 	release.WithCreateDefault()
 	if err := s.insert(ctx, release); err != nil {
 		return uuid.Nil, err
@@ -113,9 +113,9 @@ func (s *releaseService) insert(ctx context.Context, release *model.Release) err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into releases (
-			id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+			id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
 	return err
 }
 
@@ -139,7 +139,7 @@ func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model
 
 func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*model.Release, error) {
 	return scanRelease(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 		where id = $1 and deleted_at is null
 	`, id))
@@ -170,7 +170,7 @@ func (s *releaseService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]*model.Release, error) {
 	query := `
-		select id, execution_intent_id, application_id, manifest_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 	`
 	clauses := make([]string, 0, 5)
@@ -182,9 +182,9 @@ func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]
 		args = append(args, *filter.ApplicationID)
 		clauses = append(clauses, placeholderClause("application_id", len(args)))
 	}
-	if filter.ManifestID != nil {
-		args = append(args, *filter.ManifestID)
-		clauses = append(clauses, placeholderClause("manifest_id", len(args)))
+	if filter.ImageID != nil {
+		args = append(args, *filter.ImageID)
+		clauses = append(clauses, placeholderClause("image_id", len(args)))
 	}
 	if filter.Status != "" {
 		args = append(args, filter.Status)
@@ -328,7 +328,7 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 		return err
 	}
 	manifestRepo := model.GetConfigRepo()
-	manifestID := release.ManifestID.String()
+	imageID := release.ImageID.String()
 	releaseID := release.ID.String()
 	name := app.Name
 	if name == "" {
@@ -351,7 +351,7 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 					Name: "plugin",
 					Parameters: []appv1.ApplicationSourcePluginParameter{
 						{Name: "env", String_: &release.Env},
-						{Name: "manifest-id", String_: &manifestID},
+						{Name: "image-id", String_: &imageID},
 						{Name: "release-id", String_: &releaseID},
 					},
 				},
@@ -397,9 +397,9 @@ func (s *releaseService) updateRow(ctx context.Context, release *model.Release) 
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update releases
-		set execution_intent_id=$2, application_id=$3, manifest_id=$4, env=$5, type=$6, steps=$7, status=$8, external_ref=$9, updated_at=$10, deleted_at=$11
+		set execution_intent_id=$2, application_id=$3, image_id=$4, env=$5, type=$6, steps=$7, status=$8, external_ref=$9, updated_at=$10, deleted_at=$11
 		where id = $1
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
 	if err != nil {
 		return err
 	}

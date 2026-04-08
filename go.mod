@@ -4,7 +4,6 @@ go 1.25.6
 
 require (
 	github.com/argoproj/argo-cd/v3 v3.2.2
-	github.com/bsonger/devflow-common v0.0.0-20260207191634-7b70960f1987
 	github.com/bsonger/devflow-service-common v0.0.0
 	github.com/gin-contrib/cors v1.7.6
 	github.com/gin-gonic/gin v1.11.0

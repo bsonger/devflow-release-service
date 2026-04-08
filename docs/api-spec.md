@@ -10,10 +10,10 @@
 ## Endpoint Groups
 
 ### `Manifest`
-- `GET /api/v1/manifests`
-- `POST /api/v1/manifests`
-- `GET /api/v1/manifests/{id}`
-- `PATCH /api/v1/manifests/{id}`
+- `GET /api/v1/images`
+- `POST /api/v1/images`
+- `GET /api/v1/images/{id}`
+- `PATCH /api/v1/images/{id}`
 
 ### `Image`
 - `GET /api/v1/images`
@@ -36,14 +36,17 @@
 
 ## Request Rules
 
-- `POST /api/v1/manifests` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
+- `POST /api/v1/images` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
 - manifest creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
 - `POST /api/v1/images` is the product-facing alias for build record creation
 - observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
 - `repo_address` and manifest naming are resolved during manifest creation
-- `POST /api/v1/releases` accepts `manifest_id`, optional `env`, and optional release `type`
+- image registry target is read from global backend config: `IMAGE_REGISTRY` + `IMAGE_REGISTRY_NAMESPACE`
+- image names follow branch rules: `main` keeps the base name, non-`main` appends a normalized branch suffix
+- image tags are generated as `YYYYMMDD-HHmmss`
+- `POST /api/v1/releases` accepts `image_id`, optional `env`, and optional release `type`
 - release creation validates that the referenced manifest has a valid `runtime_spec_revision_id` bound through runtime-service
-- `PATCH /api/v1/manifests/{id}` only supports patch fields such as `commit_hash` and `digest`
+- `PATCH /api/v1/images/{id}` only supports patch fields such as `commit_hash` and `digest`
 - list endpoints use `page` and `page_size`
 
 ## Response Rules
@@ -51,7 +54,7 @@
 - create endpoints return `201` with `{ "data": ... }`
 - get endpoints return `200` with `{ "data": ... }`
 - list endpoints return `{ "data": [...], "pagination": { "page", "page_size", "total" } }`
-- `PATCH /api/v1/manifests/{id}` returns `204 No Content`
+- `PATCH /api/v1/images/{id}` returns `204 No Content`
 - `Intent` is a control-plane query resource and does not expose a general public update/delete CRUD surface
 
 ## Error Rules

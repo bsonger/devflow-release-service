@@ -3,7 +3,7 @@
 ## Ownership
 
 - owner repo: `devflow-release-service`
-- authoritative model file: `pkg/model/manifest.go`
+- authoritative model file: `pkg/model/image.go`
 - authoritative API doc: `docs/api-spec.md`
 
 ## Purpose
@@ -28,7 +28,7 @@
 | `application_id` | `uuid.UUID` | required | user | 目标应用 ID |
 | `configuration_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的配置 revision |
 | `runtime_spec_revision_id` | `*uuid.UUID` | optional | user/system | 绑定的运行期望态 revision |
-| `name` | `string` | system-derived | system | manifest 名称 |
+| `name` | `string` | system-derived | system | 最终镜像名；`main` 保持基础名，非 `main` 追加规范化 branch 后缀 |
 | `branch` | `string` | optional | user | Git 分支；为空默认 `main` |
 | `repo_address` | `string` | system-derived | system | Git 仓库地址 |
 | `commit_hash` | `string` | optional | system | 构建对应的 commit |
@@ -65,15 +65,21 @@
 
 - `application_id` 必须引用存在的 `Application`
 - `repo_address` 从应用元数据派生
+- 镜像仓库目标由全局环境变量 `IMAGE_REGISTRY` 和 `IMAGE_REGISTRY_NAMESPACE` 提供
+- 镜像 tag 由服务端按 `YYYYMMDD-HHmmss` 生成后下发给 Tekton
 - `Manifest` 不再拥有副本数、发布策略或 service 暴露快照
 
 ## Source pointers
 
 - router: `pkg/router/manifest.go`
-- handler: `pkg/api/manifest.go`
-- service: `pkg/service/manifest.go`
-- model: `pkg/model/manifest.go`
+- handler: `pkg/api/image.go`
+- service: `pkg/service/image.go`
+- model: `pkg/model/image.go`
 
 ## Image alias note
 
 The product-facing build surface now uses `Image` routes, but those APIs are backed by the same underlying `Manifest` persistence model during the transition.
+
+## Cleanup note
+
+Historical image/manifests rows can be purged with `devflow-control/scripts/cleanup-image-manifests.sh`.

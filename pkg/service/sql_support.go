@@ -9,7 +9,7 @@ import (
 	"github.com/google/uuid"
 )
 
-type ManifestListFilter struct {
+type ImageListFilter struct {
 	IncludeDeleted bool
 	ApplicationID  *uuid.UUID
 	PipelineID     string
@@ -21,7 +21,7 @@ type ManifestListFilter struct {
 type ReleaseListFilter struct {
 	IncludeDeleted bool
 	ApplicationID  *uuid.UUID
-	ManifestID     *uuid.UUID
+	ImageID        *uuid.UUID
 	Status         string
 	Type           string
 }

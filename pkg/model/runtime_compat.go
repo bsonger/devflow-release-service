@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"strconv"
-	"strings"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
@@ -18,13 +17,13 @@ const (
 	SpanAnnotation    = "otel.devflow.io/parent-span-id"
 )
 
-func GenerateManifestVersion(name string) string {
+func GenerateImageVersion(name string) string {
 	t := time.Now().Format("20060102150405")
 	r := rand.Intn(100)
 	return fmt.Sprintf("%s%s%s", name, t, strconv.Itoa(r))
 }
 
-func (m *Manifest) GeneratePipelineRun(pipelineName string, pvc string) *tknv1.PipelineRun {
+func (m *Image) GeneratePipelineRun(pipelineName string, pvc string, cfg ImageRegistryConfig, target ImageTarget) *tknv1.PipelineRun {
 	return &tknv1.PipelineRun{
 		TypeMeta: metav1.TypeMeta{
 			Kind:       "PipelineRun",
@@ -33,15 +32,15 @@ func (m *Manifest) GeneratePipelineRun(pipelineName string, pvc string) *tknv1.P
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: pipelineName + "-run-",
 			Labels: map[string]string{
-				"devflow.manifest/id": m.ID.String(),
+				"devflow.image/id": m.ID.String(),
 			},
 			Annotations: map[string]string{
-				"devflow.manifest/id": m.ID.String(),
+				"devflow.image/id": m.ID.String(),
 			},
 		},
 		Spec: tknv1.PipelineRunSpec{
 			PipelineRef: &tknv1.PipelineRef{Name: pipelineName},
-			Params:      m.GeneratePipelineRunParams(),
+			Params:      m.GeneratePipelineRunParams(cfg, target),
 			Workspaces: []tknv1.WorkspaceBinding{
 				{
 					Name: "source",
@@ -62,15 +61,10 @@ func (m *Manifest) GeneratePipelineRun(pipelineName string, pvc string) *tknv1.P
 	}
 }
 
-func (m *Manifest) GeneratePipelineRunParams() []tknv1.Param {
-	imageTag := m.Name
-	if m.Branch != "main" {
-		imageTag = fmt.Sprintf("%s-%s", m.Branch, imageTag)
-	}
-	safeImageTag := strings.ReplaceAll(imageTag, "/", "-")
+func (m *Image) GeneratePipelineRunParams(cfg ImageRegistryConfig, target ImageTarget) []tknv1.Param {
 	return []tknv1.Param{
 		{
-			Name:  "manifest-id",
+			Name:  "image-id",
 			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: m.ID.String()},
 		},
 		{
@@ -83,18 +77,18 @@ func (m *Manifest) GeneratePipelineRunParams() []tknv1.Param {
 		},
 		{
 			Name:  "image-registry",
-			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: "registry.cn-hangzhou.aliyuncs.com/devflow"},
+			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: cfg.Repository()},
 		},
 		{
 			Name:  "name",
-			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: m.Name},
+			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: target.Name},
 		},
 		{
 			Name:  "image-tag",
-			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: safeImageTag},
+			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: target.Tag},
 		},
 		{
-			Name:  "manifest-name",
+			Name:  "image-name",
 			Value: tknv1.ParamValue{Type: tknv1.ParamTypeString, StringVal: m.Name},
 		},
 	}

@@ -12,7 +12,7 @@
 当前仓库重点字段：
 
 - `application_id`
-- `manifest_id`
+- `image_id`
 - `release_id`
 - `intent_id`
 - `external_ref`

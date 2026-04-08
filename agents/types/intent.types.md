@@ -7,8 +7,8 @@
 - resource_id: string
 - application_id: string
 - application_name: string
-- manifest_id: string
-- manifest_name: string
+- image_id: string
+- image_name: string
 - release_id: string
 - release_type: string
 - env: string

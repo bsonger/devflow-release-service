@@ -48,7 +48,7 @@ func TestCreateReleaseReturnsEnvelope(t *testing.T) {
 	r := gin.New()
 	r.POST("/api/v1/releases", handler.Create)
 
-	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222","env":"prod","type":"upgrade"}`)
+	body := bytes.NewBufferString(`{"image_id":"22222222-2222-2222-2222-222222222222","env":"prod","type":"upgrade"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -64,7 +64,7 @@ func TestCreateReleaseReturnsEnvelope(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if payload.Data.ManifestID == uuid.Nil || payload.Data.Env != "prod" {
+	if payload.Data.ImageID == uuid.Nil || payload.Data.Env != "prod" {
 		t.Fatalf("unexpected payload: %#v", payload.Data)
 	}
 }
@@ -74,7 +74,7 @@ func TestCreateReleaseFailedPreconditionReturnsErrorEnvelope(t *testing.T) {
 	handler := &ReleaseHandler{
 		svc: stubReleaseService{
 			createFn: func(_ context.Context, _ *model.Release) (uuid.UUID, error) {
-				return uuid.Nil, service.ErrManifestMissingRuntimeSpecRevision
+				return uuid.Nil, service.ErrImageMissingRuntimeSpecRevision
 			},
 		},
 	}
@@ -82,7 +82,7 @@ func TestCreateReleaseFailedPreconditionReturnsErrorEnvelope(t *testing.T) {
 	r := gin.New()
 	r.POST("/api/v1/releases", handler.Create)
 
-	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222"}`)
+	body := bytes.NewBufferString(`{"image_id":"22222222-2222-2222-2222-222222222222"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()

@@ -4,7 +4,7 @@ resources:
   - tasks/devflow-tekton-git-clone.yaml
   - tasks/devflow-tekton-go-test.yaml
   - tasks/devflow-tekton-image-build-and-push.yaml
-  - tasks/devflow-tekton-manifest-patch.yaml
+  - tasks/devflow-tekton-image-patch.yaml
   - tasks/devflow-tekton-image-scan.yaml
   - tasks/devflow-tekton-generate-sbom.yaml
   - tasks/devflow-tekton-image-sign.yaml

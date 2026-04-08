@@ -4,15 +4,15 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"github.com/bsonger/devflow-common/client/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/api"
 	"github.com/bsonger/devflow-release-service/pkg/argoclient"
+	localtekton "github.com/bsonger/devflow-release-service/pkg/infra/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/bsonger/devflow-release-service/pkg/store"
-	"github.com/bsonger/devflow-release-service/pkg/telemetry"
 	"github.com/bsonger/devflow-service-common/loggingx"
+	"github.com/bsonger/devflow-service-common/observability"
 	"net/http"
 	"strings"
 
@@ -74,7 +74,7 @@ func InitConfig(ctx context.Context, config *Config) error {
 }
 
 func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(context.Context) error, error) {
-	shutdown, err := telemetry.Init(ctx, config.Log, config.Otel, config.Pyroscope, serviceName)
+	shutdown, err := initObservability(ctx, config.Log, config.Otel, config.Pyroscope, serviceName)
 	if err != nil {
 		return nil, err
 	}
@@ -97,7 +97,7 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 	if err != nil {
 		return shutdown, err
 	}
-	err = tekton.InitTektonClient(ctx, kubeconfig, loggingx.Logger)
+	err = localtekton.InitClient(ctx, kubeconfig, loggingx.Logger)
 	if err != nil {
 		return shutdown, err
 	}
@@ -116,6 +116,35 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 		}
 		return closeErr
 	}, nil
+}
+
+func initObservability(ctx context.Context, logCfg *model.LogConfig, otelCfg *model.OtelConfig, pyroscopeAddr, serviceName string) (func(context.Context) error, error) {
+	opts := observability.RuntimeOptions{
+		LogLevel:        "",
+		LogFormat:       "",
+		OtelEndpoint:    "",
+		OtelService:     resolveObservabilityServiceName(otelCfg, serviceName),
+		PyroscopeAddr:   pyroscopeAddr,
+		ServiceOverride: serviceName,
+	}
+	if logCfg != nil {
+		opts.LogLevel = logCfg.Level
+		opts.LogFormat = logCfg.Format
+	}
+	if otelCfg != nil {
+		opts.OtelEndpoint = otelCfg.Endpoint
+	}
+	return observability.Init(ctx, opts)
+}
+
+func resolveObservabilityServiceName(otelCfg *model.OtelConfig, override string) string {
+	if override != "" {
+		return override
+	}
+	if otelCfg != nil && otelCfg.ServiceName != "" {
+		return otelCfg.ServiceName
+	}
+	return "devflow"
 }
 
 func LoadKubeConfig() (*rest.Config, error) {

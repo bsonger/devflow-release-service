@@ -1,15 +1,15 @@
 apiVersion: tekton.dev/v1
 kind: Task
 metadata:
-  name: devflow-tekton-manifest-patch
+  name: devflow-tekton-image-patch
   namespace: tekton-pipelines
   labels:
     app.kubernetes.io/part-of: devflow
     app.kubernetes.io/component: tekton-task
 spec:
-  description: Patch manifest with commit hash and image digest
+  description: Patch image with commit hash and image digest
   params:
-    - name: manifest-id
+    - name: image-id
       type: string
     - name: devflow-api
       type: string
@@ -48,4 +48,4 @@ spec:
         curl -sS -X PATCH \
           -H "Content-Type: application/json" \
           -d "$BODY" \
-          "$(params.devflow-api)/api/v1/manifests/$(params.manifest-id)"
+          "$(params.devflow-api)/api/v1/images/$(params.image-id)"

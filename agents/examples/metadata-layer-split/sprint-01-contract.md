@@ -38,7 +38,7 @@
   - `Pass with risks`：主体边界已清楚，但事件回写或协议部分仍有明确未知项。
   - `Fail`：如果文档仍无法回答“谁负责执行、谁负责状态真相、谁负责回写”，则失败。
 - 验证方法：
-  - 对照 `pkg/service/manifest.go`、`pkg/service/release.go`、`pkg/service/argo.go`、`pkg/config/config.go` 确认耦合点。
+  - 对照 `pkg/service/image.go`、`pkg/service/release.go`、`pkg/service/argo.go`、`pkg/config/config.go` 确认耦合点。
   - 对照现有 `agents/reference/*.md` 与 ADR 001，确保状态来源仍以外部系统为准。
   - 通过示例 handoff 固定下一轮最小切片。
 - 失败门槛：

@@ -31,9 +31,9 @@ func NewReleaseHandler() *ReleaseHandler {
 }
 
 type CreateReleaseRequest struct {
-	ManifestID uuid.UUID `json:"manifest_id"`
-	Env        string    `json:"env,omitempty"`
-	Type       string    `json:"type,omitempty"`
+	ImageID uuid.UUID `json:"image_id"`
+	Env     string    `json:"env,omitempty"`
+	Type    string    `json:"type,omitempty"`
 }
 
 // Create
@@ -52,14 +52,14 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 		return
 	}
 	release := &model.Release{
-		ManifestID: req.ManifestID,
-		Env:        req.Env,
-		Type:       req.Type,
+		ImageID: req.ImageID,
+		Env:     req.Env,
+		Type:    req.Type,
 	}
 	release.WithCreateDefault()
 	_, err := h.svc.Create(c.Request.Context(), release)
 	if err != nil {
-		if errors.Is(err, service.ErrManifestMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
+		if errors.Is(err, service.ErrImageMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
 			httpx.WriteError(c, http.StatusConflict, "failed_precondition", err.Error(), nil)
 			return
 		}
@@ -111,13 +111,13 @@ func (h *ReleaseHandler) List(c *gin.Context) {
 		}
 		filter.ApplicationID = &id
 	}
-	if manifestID := c.Query("manifest_id"); manifestID != "" {
-		id, err := uuid.Parse(manifestID)
+	if imageID := c.Query("image_id"); imageID != "" {
+		id, err := uuid.Parse(imageID)
 		if err != nil {
-			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid manifest_id", nil)
+			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid image_id", nil)
 			return
 		}
-		filter.ManifestID = &id
+		filter.ImageID = &id
 	}
 	if status := c.Query("status"); status != "" {
 		filter.Status = status

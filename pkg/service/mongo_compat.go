@@ -20,11 +20,11 @@ type applicationProjection struct {
 	RepoURL     string
 }
 
-func scanManifest(scanner interface {
+func scanImage(scanner interface {
 	Scan(dest ...any) error
-}) (*model.Manifest, error) {
+}) (*model.Image, error) {
 	var (
-		item                    model.Manifest
+		item                    model.Image
 		executionIntent         sql.NullString
 		configurationRevisionID sql.NullString
 		runtimeSpecRevisionID   sql.NullString
@@ -91,7 +91,7 @@ func scanRelease(scanner interface {
 		&item.ID,
 		&executionIntent,
 		&item.ApplicationID,
-		&item.ManifestID,
+		&item.ImageID,
 		&item.Env,
 		&item.Type,
 		&stepsBytes,

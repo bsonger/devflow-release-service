@@ -4,8 +4,8 @@
 - execution_intent_id: string
 - application_id: string
 - application_name: string
-- manifest_id: string
-- manifest_name: string
+- image_id: string
+- image_name: string
 - project_name: string
 - env: string
 - type: string

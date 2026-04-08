@@ -5,7 +5,7 @@ import "time"
 type ReleaseType string
 type Internet string
 type StepStatus string
-type ManifestStatus string
+type ImageStatus string
 type ReleaseStatus string
 type IntentKind string
 type IntentStatus string
@@ -29,10 +29,10 @@ const (
 )
 
 const (
-	ManifestPending   ManifestStatus = "Pending"
-	ManifestRunning   ManifestStatus = "Running"
-	ManifestSucceeded ManifestStatus = "Succeeded"
-	ManifestFailed    ManifestStatus = "Failed"
+	ImagePending   ImageStatus = "Pending"
+	ImageRunning   ImageStatus = "Running"
+	ImageSucceeded ImageStatus = "Succeeded"
+	ImageFailed    ImageStatus = "Failed"
 )
 
 const (
@@ -72,7 +72,7 @@ type Port struct {
 	TargetPort int    `json:"target_port"`
 }
 
-type ManifestStep struct {
+type ImageTask struct {
 	TaskName  string     `json:"task_name"`
 	TaskRun   string     `json:"task_run,omitempty"`
 	Status    StepStatus `json:"status"`

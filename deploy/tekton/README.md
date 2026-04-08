@@ -10,7 +10,7 @@ This directory is the repo-managed source of truth for DevFlow image-build Tekto
   - `devflow-tekton-git-clone`
   - `devflow-tekton-go-test`
   - `devflow-tekton-image-build-and-push`
-  - `devflow-tekton-manifest-patch`
+  - `devflow-tekton-image-patch`
 
 ## Apply
 
@@ -22,6 +22,6 @@ kubectl apply -k deploy/tekton/base -n tekton-pipelines
 
 `devflow-release-service` build creation uses `devflow-tekton-image-build` when it submits Tekton `PipelineRun`s.
 
-The manifest patch step defaults to the in-cluster staging release-service endpoint:
+The image patch step defaults to the in-cluster staging release-service endpoint:
 
 - `http://devflow-release-service.devflow-staging.svc.cluster.local:8083`

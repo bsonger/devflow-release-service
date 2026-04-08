@@ -48,7 +48,7 @@ curl -X GET "http://localhost:8080/api/v1/applications"
 
 ### 创建 Manifest
 ```bash
-curl -X POST "http://localhost:8080/api/v1/manifests" \
+curl -X POST "http://localhost:8080/api/v1/images" \
   -H "Content-Type: application/json" \
   -d '{
     "application_id": "app_001",
@@ -74,7 +74,7 @@ curl -X POST "http://localhost:8080/api/v1/manifests" \
 
 ### Patch Manifest（更新 digest / commit_hash）
 ```bash
-curl -X PATCH "http://localhost:8080/api/v1/manifests/manifest_001" \
+curl -X PATCH "http://localhost:8080/api/v1/images/manifest_001" \
   -H "Content-Type: application/json" \
   -d '{
     "commit_hash": "a1b2c3d4",

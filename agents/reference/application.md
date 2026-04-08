@@ -10,7 +10,7 @@ Authoritative sources:
 
 This file must not define application semantics.
   - `status`
-- `active_manifest_id` / `active_manifest_name` 指向当前生效的 Manifest
+- `active_image_id` / `active_image_name` 指向当前生效的 Manifest
 - 若请求提供 `project_id`，服务会校验项目存在并把 `project_name` 对齐到项目名称
 - 读写由应用 API 管理
 

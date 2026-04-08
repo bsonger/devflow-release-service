@@ -6,7 +6,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bsonger/devflow-common/client/tekton"
+	localtekton "github.com/bsonger/devflow-release-service/pkg/infra/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
 	"github.com/bsonger/devflow-release-service/pkg/store"
@@ -18,7 +18,7 @@ import (
 	"go.uber.org/zap"
 )
 
-var ManifestService = &manifestService{}
+var ImageService = &imageService{}
 
 const (
 	tektonNamespace       = "tekton-pipelines"
@@ -26,15 +26,11 @@ const (
 	tektonPVCGenerateName = "devflow-tekton-image-build"
 )
 
-type manifestService struct{}
+type imageService struct{}
 
-func (s *manifestService) CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error) {
-	return s.CreateManifest(ctx, (*model.Manifest)(m))
-}
-
-func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest) (uuid.UUID, error) {
+func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error) {
 	logger := loggingx.LoggerFromContext(ctx)
-	logger.Info("create manifest start",
+	logger.Info("create image start",
 		zap.String("application_id", m.ApplicationID.String()),
 		zap.String("branch", m.Branch),
 	)
@@ -49,12 +45,22 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 	if m.RepoAddress == "" {
 		m.RepoAddress = app.RepoURL
 	}
-	m.Name = model.GenerateManifestVersion(app.Name)
-	m.Status = model.ManifestPending
-	m.WithCreateDefault()
 	if m.Branch == "" {
 		m.Branch = "main"
 	}
+	registryConfig, err := runtime.ImageRegistryConfigFromEnv()
+	if err != nil {
+		logger.Error("image registry config invalid", zap.Error(err))
+		return uuid.Nil, err
+	}
+	imageTarget, err := model.BuildImageTarget(registryConfig, app.Name, m.Branch, time.Now())
+	if err != nil {
+		logger.Error("build image target failed", zap.Error(err))
+		return uuid.Nil, err
+	}
+	m.Name = imageTarget.Name
+	m.Status = model.ImagePending
+	m.WithCreateDefault()
 
 	if runtime.IsIntentMode() {
 		if err := s.insert(ctx, m); err != nil {
@@ -64,7 +70,7 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 		if err != nil {
 			return m.ID, err
 		}
-		logger.Info("create manifest success in intent mode", zap.String("manifest", m.Name), zap.String("intent_id", intentID.String()))
+		logger.Info("create image success in intent mode", zap.String("image", m.Name), zap.String("intent_id", intentID.String()))
 		return m.ID, nil
 	}
 
@@ -75,38 +81,48 @@ func (s *manifestService) CreateManifest(ctx context.Context, m *model.Manifest)
 		return uuid.Nil, err
 	}
 
-	logger.Info("create manifest success", zap.String("manifest", m.Name), zap.String("pipelineRun", m.PipelineID))
+	logger.Info("create image success", zap.String("image", m.Name), zap.String("pipelineRun", m.PipelineID))
 	return m.ID, nil
 }
 
-func (s *manifestService) insert(ctx context.Context, m *model.Manifest) error {
+func (s *imageService) insert(ctx context.Context, m *model.Image) error {
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
 	}
 	_, err = store.DB().ExecContext(ctx, `
-		insert into manifests (
+		insert into images (
 			id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
 		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
 	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.CreatedAt, m.UpdatedAt, m.DeletedAt)
 	return err
 }
 
-func (s *manifestService) DispatchBuild(ctx context.Context, manifestID uuid.UUID) error {
-	manifest, err := s.Get(ctx, manifestID)
+func (s *imageService) DispatchBuild(ctx context.Context, imageID uuid.UUID) error {
+	image, err := s.Get(ctx, imageID)
 	if err != nil {
 		return err
 	}
-	if err := s.submitBuild(ctx, manifest); err != nil {
+	if err := s.submitBuild(ctx, image); err != nil {
 		return err
 	}
-	return s.updatePipelineAndSteps(ctx, manifest.ID, manifest.PipelineID, manifest.Steps)
+	return s.updatePipelineAndSteps(ctx, image.ID, image.PipelineID, image.Steps)
 }
 
-func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) error {
+func (s *imageService) submitBuild(ctx context.Context, m *model.Image) error {
 	logger := loggingx.LoggerFromContext(ctx)
+	registryConfig, err := runtime.ImageRegistryConfigFromEnv()
+	if err != nil {
+		return err
+	}
+	tag := time.Now().UTC().Format("20060102-150405")
+	imageTarget := model.ImageTarget{
+		Name: m.Name,
+		Tag:  tag,
+		Ref:  registryConfig.Repository() + "/" + m.Name + ":" + tag,
+	}
 
-	pvc, err := tekton.CreatePVC(ctx, tektonNamespace, tektonPVCGenerateName, "local-path", "1Gi")
+	pvc, err := localtekton.CreatePVC(ctx, tektonNamespace, tektonPVCGenerateName, "local-path", "1Gi")
 	if err != nil {
 		logger.Error("create pvc failed", zap.Error(err))
 		return err
@@ -115,24 +131,24 @@ func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) er
 	pctx, span := StartServiceSpan(ctx, "Tekton.CreatePipelineRun")
 	defer span.End()
 
-	pr := m.GeneratePipelineRun(tektonBuildPipeline, pvc.Name)
+	pr := m.GeneratePipelineRun(tektonBuildPipeline, pvc.Name, registryConfig, imageTarget)
 	sc := trace.SpanContextFromContext(pctx)
 	pr.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
 		model.SpanAnnotation:    sc.SpanID().String(),
 	}
-	pr, err = tekton.CreatePipelineRun(pctx, tektonNamespace, pr)
+	pr, err = localtekton.CreatePipelineRun(pctx, tektonNamespace, pr)
 	if err != nil {
 		span.RecordError(err)
 		span.SetStatus(codes.Error, err.Error())
 		return err
 	}
-	if err := tekton.PatchPVCOwner(ctx, pvc, pr); err != nil {
+	if err := localtekton.PatchPVCOwner(ctx, pvc, pr); err != nil {
 		logger.Warn("patch pvc owner failed", zap.Error(err))
 	}
 	m.PipelineID = pr.Name
 
-	pipeline, err := tekton.GetPipeline(ctx, pr.Namespace, pr.Spec.PipelineRef.Name)
+	pipeline, err := localtekton.GetPipeline(ctx, pr.Namespace, pr.Spec.PipelineRef.Name)
 	if err != nil {
 		return err
 	}
@@ -140,11 +156,7 @@ func (s *manifestService) submitBuild(ctx context.Context, m *model.Manifest) er
 	return nil
 }
 
-func (s *manifestService) GetManifest(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
-	return s.Get(ctx, id)
-}
-
-func (s *manifestService) Update(ctx context.Context, m *model.Manifest) error {
+func (s *imageService) Update(ctx context.Context, m *model.Image) error {
 	current, err := s.Get(ctx, m.ID)
 	if err != nil {
 		return err
@@ -155,10 +167,10 @@ func (s *manifestService) Update(ctx context.Context, m *model.Manifest) error {
 	return s.updateRow(ctx, m)
 }
 
-func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) ([]model.Manifest, error) {
+func (s *imageService) List(ctx context.Context, filter ImageListFilter) ([]model.Image, error) {
 	query := `
 		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
-		from manifests
+		from images
 	`
 	clauses := make([]string, 0, 6)
 	args := make([]any, 0, 6)
@@ -195,9 +207,9 @@ func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) (
 		return nil, err
 	}
 	defer rows.Close()
-	out := make([]model.Manifest, 0)
+	out := make([]model.Image, 0)
 	for rows.Next() {
-		item, err := scanManifest(rows)
+		item, err := scanImage(rows)
 		if err != nil {
 			return nil, err
 		}
@@ -209,34 +221,34 @@ func (s *manifestService) List(ctx context.Context, filter ManifestListFilter) (
 	return out, nil
 }
 
-func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
-	return scanManifest(store.DB().QueryRowContext(ctx, `
+func (s *imageService) Get(ctx context.Context, id uuid.UUID) (*model.Image, error) {
+	return scanImage(store.DB().QueryRowContext(ctx, `
 		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
-		from manifests
+		from images
 		where id = $1 and deleted_at is null
 	`, id))
 }
 
-func (s *manifestService) AssignPipelineID(ctx context.Context, manifestID uuid.UUID, pipelineID string) error {
-	if manifestID == uuid.Nil {
-		return errors.New("manifest id cannot be zero")
+func (s *imageService) AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error {
+	if imageID == uuid.Nil {
+		return errors.New("image id cannot be zero")
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set pipeline_id = $2, updated_at = $3
 		where id = $1 and deleted_at is null
-	`, manifestID, pipelineID, time.Now())
+	`, imageID, pipelineID, time.Now())
 	if err != nil {
 		return err
 	}
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) UpdateManifestStatusByID(ctx context.Context, manifestID uuid.UUID, status model.ManifestStatus) error {
-	if manifestID == uuid.Nil {
-		return errors.New("manifest id cannot be zero")
+func (s *imageService) UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error {
+	if imageID == uuid.Nil {
+		return errors.New("image id cannot be zero")
 	}
-	current, err := s.Get(ctx, manifestID)
+	current, err := s.Get(ctx, imageID)
 	if err != nil {
 		return err
 	}
@@ -245,112 +257,112 @@ func (s *manifestService) UpdateManifestStatusByID(ctx context.Context, manifest
 	return s.updateStatusAndSteps(ctx, current.ID, current.Status, current.Steps, current.PipelineID)
 }
 
-func (s *manifestService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
-	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
+func (s *imageService) UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error {
+	image, err := s.GetImageByPipelineID(ctx, pipelineID)
 	if err != nil {
 		return err
 	}
 	changed := false
-	for i := range manifest.Steps {
-		if manifest.Steps[i].TaskName != taskName {
+	for i := range image.Steps {
+		if image.Steps[i].TaskName != taskName {
 			continue
 		}
-		if manifest.Steps[i].Status == model.StepFailed || manifest.Steps[i].Status == model.StepSucceeded || manifest.Steps[i].Status == status {
+		if image.Steps[i].Status == model.StepFailed || image.Steps[i].Status == model.StepSucceeded || image.Steps[i].Status == status {
 			return nil
 		}
-		manifest.Steps[i].Status = status
-		manifest.Steps[i].Message = message
+		image.Steps[i].Status = status
+		image.Steps[i].Message = message
 		if start != nil {
-			manifest.Steps[i].StartTime = start
+			image.Steps[i].StartTime = start
 		}
 		if end != nil {
-			manifest.Steps[i].EndTime = end
+			image.Steps[i].EndTime = end
 		}
 		changed = true
 	}
 	if !changed {
 		return nil
 	}
-	manifest.UpdatedAt = time.Now()
-	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
+	image.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, image.ID, image.Status, image.Steps, image.PipelineID)
 }
 
-func (s *manifestService) UpdateManifestStatus(ctx context.Context, pipelineID string, status model.ManifestStatus) error {
-	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
+func (s *imageService) UpdateImageStatus(ctx context.Context, pipelineID string, status model.ImageStatus) error {
+	image, err := s.GetImageByPipelineID(ctx, pipelineID)
 	if err != nil {
 		return err
 	}
-	manifest.Status = status
-	manifest.UpdatedAt = time.Now()
-	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
+	image.Status = status
+	image.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, image.ID, image.Status, image.Steps, image.PipelineID)
 }
 
-func BuildStepsFromPipeline(pipeline *v1.Pipeline) []model.ManifestStep {
-	steps := make([]model.ManifestStep, 0, len(pipeline.Spec.Tasks)+len(pipeline.Spec.Finally))
+func BuildStepsFromPipeline(pipeline *v1.Pipeline) []model.ImageTask {
+	steps := make([]model.ImageTask, 0, len(pipeline.Spec.Tasks)+len(pipeline.Spec.Finally))
 	for _, task := range pipeline.Spec.Tasks {
-		steps = append(steps, model.ManifestStep{TaskName: task.Name, Status: model.StepPending})
+		steps = append(steps, model.ImageTask{TaskName: task.Name, Status: model.StepPending})
 	}
 	for _, task := range pipeline.Spec.Finally {
-		steps = append(steps, model.ManifestStep{TaskName: task.Name, Status: model.StepPending})
+		steps = append(steps, model.ImageTask{TaskName: task.Name, Status: model.StepPending})
 	}
 	return steps
 }
 
-func (s *manifestService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
-	manifest, err := s.GetManifestByPipelineID(ctx, pipelineID)
+func (s *imageService) BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error {
+	image, err := s.GetImageByPipelineID(ctx, pipelineID)
 	if err != nil {
 		return err
 	}
 	changed := false
-	for i := range manifest.Steps {
-		if manifest.Steps[i].TaskName == taskName {
-			if manifest.Steps[i].TaskRun == taskRun {
+	for i := range image.Steps {
+		if image.Steps[i].TaskName == taskName {
+			if image.Steps[i].TaskRun == taskRun {
 				return nil
 			}
-			manifest.Steps[i].TaskRun = taskRun
+			image.Steps[i].TaskRun = taskRun
 			changed = true
 		}
 	}
 	if !changed {
 		return nil
 	}
-	manifest.UpdatedAt = time.Now()
-	return s.updateStatusAndSteps(ctx, manifest.ID, manifest.Status, manifest.Steps, manifest.PipelineID)
+	image.UpdatedAt = time.Now()
+	return s.updateStatusAndSteps(ctx, image.ID, image.Status, image.Steps, image.PipelineID)
 }
 
-func (s *manifestService) GetManifestByPipelineID(ctx context.Context, pipelineID string) (*model.Manifest, error) {
-	return scanManifest(store.DB().QueryRowContext(ctx, `
+func (s *imageService) GetImageByPipelineID(ctx context.Context, pipelineID string) (*model.Image, error) {
+	return scanImage(store.DB().QueryRowContext(ctx, `
 		select id, execution_intent_id, application_id, configuration_revision_id, runtime_spec_revision_id, name, branch, repo_address, commit_hash, digest, pipeline_id, steps, status, created_at, updated_at, deleted_at
-		from manifests
+		from images
 		where pipeline_id = $1 and deleted_at is null
 	`, pipelineID))
 }
 
-func (s *manifestService) Patch(ctx context.Context, id uuid.UUID, patch *model.PatchManifestRequest) error {
+func (s *imageService) Patch(ctx context.Context, id uuid.UUID, patch *model.PatchImageRequest) error {
 	if patch == nil || patch.IsEmpty() {
 		return nil
 	}
-	manifest, err := s.Get(ctx, id)
+	image, err := s.Get(ctx, id)
 	if err != nil {
 		return err
 	}
 	if patch.Digest != "" {
-		manifest.Digest = patch.Digest
+		image.Digest = patch.Digest
 	}
 	if patch.CommitHash != "" {
-		manifest.CommitHash = patch.CommitHash
+		image.CommitHash = patch.CommitHash
 	}
-	manifest.UpdatedAt = time.Now()
-	return s.updateRow(ctx, manifest)
+	image.UpdatedAt = time.Now()
+	return s.updateRow(ctx, image)
 }
 
-func (s *manifestService) updatePipelineAndSteps(ctx context.Context, id uuid.UUID, pipelineID string, steps []model.ManifestStep) error {
+func (s *imageService) updatePipelineAndSteps(ctx context.Context, id uuid.UUID, pipelineID string, steps []model.ImageTask) error {
 	stepsJSON, err := marshalJSON(steps, "[]")
 	if err != nil {
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set pipeline_id = $2, steps = $3, updated_at = $4
 		where id = $1 and deleted_at is null
 	`, id, pipelineID, stepsJSON, time.Now())
@@ -360,13 +372,13 @@ func (s *manifestService) updatePipelineAndSteps(ctx context.Context, id uuid.UU
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) updateStatusAndSteps(ctx context.Context, id uuid.UUID, status model.ManifestStatus, steps []model.ManifestStep, pipelineID string) error {
+func (s *imageService) updateStatusAndSteps(ctx context.Context, id uuid.UUID, status model.ImageStatus, steps []model.ImageTask, pipelineID string) error {
 	stepsJSON, err := marshalJSON(steps, "[]")
 	if err != nil {
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set status = $2, steps = $3, pipeline_id = $4, updated_at = $5
 		where id = $1 and deleted_at is null
 	`, id, status, stepsJSON, pipelineID, time.Now())
@@ -376,9 +388,9 @@ func (s *manifestService) updateStatusAndSteps(ctx context.Context, id uuid.UUID
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) Delete(ctx context.Context, id uuid.UUID) error {
+func (s *imageService) Delete(ctx context.Context, id uuid.UUID) error {
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set deleted_at = $2, updated_at = $2
 		where id = $1 and deleted_at is null
 	`, id, time.Now())
@@ -388,13 +400,13 @@ func (s *manifestService) Delete(ctx context.Context, id uuid.UUID) error {
 	return ensureRowsAffected(result)
 }
 
-func (s *manifestService) updateRow(ctx context.Context, m *model.Manifest) error {
+func (s *imageService) updateRow(ctx context.Context, m *model.Image) error {
 	stepsJSON, err := marshalJSON(m.Steps, "[]")
 	if err != nil {
 		return err
 	}
 	result, err := store.DB().ExecContext(ctx, `
-		update manifests
+		update images
 		set execution_intent_id=$2, application_id=$3, configuration_revision_id=$4, runtime_spec_revision_id=$5, name=$6, branch=$7, repo_address=$8, commit_hash=$9, digest=$10, pipeline_id=$11, steps=$12, status=$13, updated_at=$14, deleted_at=$15
 		where id=$1 and deleted_at is null
 	`, m.ID, nullableUUIDPtr(m.ExecutionIntentID), m.ApplicationID, nullableUUIDPtr(m.ConfigurationRevisionID), nullableUUIDPtr(m.RuntimeSpecRevisionID), m.Name, m.Branch, m.RepoAddress, m.CommitHash, m.Digest, m.PipelineID, stepsJSON, m.Status, m.UpdatedAt, m.DeletedAt)

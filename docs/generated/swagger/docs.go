@@ -96,7 +96,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/manifests": {
+        "/api/v1/images": {
             "get": {
                 "tags": [
                     "Manifest"
@@ -156,7 +156,7 @@ const docTemplate = `{
                 }
             }
         },
-        "/api/v1/manifests/{id}": {
+        "/api/v1/images/{id}": {
             "get": {
                 "tags": [
                     "Manifest"
@@ -411,10 +411,10 @@ const docTemplate = `{
                 "lease_expires_at": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
-                "manifest_name": {
+                "image_name": {
                     "type": "string"
                 },
                 "message": {
@@ -647,10 +647,10 @@ const docTemplate = `{
                 "id": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
-                "manifest_name": {
+                "image_name": {
                     "type": "string"
                 },
                 "project_name": {

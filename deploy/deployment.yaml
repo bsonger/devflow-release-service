@@ -19,6 +19,23 @@ spec:
       containers:
         - name: devflow-release-service
           image: registry.cn-hangzhou.aliyuncs.com/devflow/devflow-release-service:staging
+          env:
+            - name: IMAGE_REGISTRY
+              value: registry.cn-hangzhou.aliyuncs.com
+            - name: IMAGE_REGISTRY_NAMESPACE
+              value: devflow
+            - name: IMAGE_REGISTRY_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-registry-credentials
+                  key: username
+                  optional: true
+            - name: IMAGE_REGISTRY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: aliyun-registry-credentials
+                  key: password
+                  optional: true
           ports:
             - containerPort: 8083
               name: http

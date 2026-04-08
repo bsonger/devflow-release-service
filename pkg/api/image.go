@@ -17,8 +17,8 @@ var ImageRouteApi = NewImageHandler()
 
 type imageService interface {
 	CreateImage(ctx context.Context, m *model.Image) (uuid.UUID, error)
-	List(ctx context.Context, filter service.ManifestListFilter) ([]model.Manifest, error)
-	Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error)
+	List(ctx context.Context, filter service.ImageListFilter) ([]model.Image, error)
+	Get(ctx context.Context, id uuid.UUID) (*model.Image, error)
 	Patch(ctx context.Context, id uuid.UUID, patch *model.PatchImageRequest) error
 }
 
@@ -27,7 +27,7 @@ type ImageHandler struct {
 }
 
 func NewImageHandler() *ImageHandler {
-	return &ImageHandler{svc: service.ManifestService}
+	return &ImageHandler{svc: service.ImageService}
 }
 
 func (h *ImageHandler) Create(c *gin.Context) {
@@ -50,7 +50,7 @@ func (h *ImageHandler) Create(c *gin.Context) {
 }
 
 func (h *ImageHandler) List(c *gin.Context) {
-	filter := service.ManifestListFilter{IncludeDeleted: httpx.IncludeDeleted(c)}
+	filter := service.ImageListFilter{IncludeDeleted: httpx.IncludeDeleted(c)}
 	if appID := c.Query("application_id"); appID != "" {
 		id, err := uuid.Parse(appID)
 		if err != nil {

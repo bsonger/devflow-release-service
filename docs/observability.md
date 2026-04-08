@@ -23,7 +23,7 @@ Recommended structured fields:
 - `resource`
 - `resource_id`
 - `application_id`
-- `manifest_id`
+- `image_id`
 - `release_id`
 - `intent_id`
 - `dependency`

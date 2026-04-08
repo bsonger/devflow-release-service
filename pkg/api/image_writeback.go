@@ -22,10 +22,10 @@ var ObserverSharedToken string
 
 type imageWritebackService interface {
 	AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error
-	UpdateManifestStatusByID(ctx context.Context, imageID uuid.UUID, status model.ManifestStatus) error
+	UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error
 	UpdateStepStatus(ctx context.Context, pipelineID, taskName string, status model.StepStatus, message string, start, end *time.Time) error
 	BindTaskRun(ctx context.Context, pipelineID, taskName, taskRun string) error
-	Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error)
+	Get(ctx context.Context, id uuid.UUID) (*model.Image, error)
 }
 
 type ImageWritebackHandler struct {
@@ -35,7 +35,7 @@ type ImageWritebackHandler struct {
 type ImageTektonStatusRequest struct {
 	ImageID    string               `json:"image_id" binding:"required"`
 	PipelineID string               `json:"pipeline_id,omitempty"`
-	Status     model.ManifestStatus `json:"status" binding:"required"`
+	Status     model.ImageStatus    `json:"status" binding:"required"`
 	Message    string               `json:"message,omitempty"`
 }
 
@@ -51,7 +51,7 @@ type ImageTektonTaskRequest struct {
 }
 
 func NewImageWritebackHandler() *ImageWritebackHandler {
-	return &ImageWritebackHandler{svc: service.ManifestService}
+	return &ImageWritebackHandler{svc: service.ImageService}
 }
 
 func RequireObserverToken(expected string) gin.HandlerFunc {
@@ -102,7 +102,7 @@ func (h *ImageWritebackHandler) HandleTektonStatus(c *gin.Context) {
 			return
 		}
 	}
-	if err := h.svc.UpdateManifestStatusByID(c.Request.Context(), imageID, normalizeManifestStatus(req.Status)); err != nil {
+	if err := h.svc.UpdateImageStatusByID(c.Request.Context(), imageID, normalizeImageStatus(req.Status)); err != nil {
 		writeImageVerifyError(c, err)
 		return
 	}
@@ -138,16 +138,16 @@ func (h *ImageWritebackHandler) HandleTektonTask(c *gin.Context) {
 	httpx.WriteNoContent(c)
 }
 
-func normalizeManifestStatus(status model.ManifestStatus) model.ManifestStatus {
+func normalizeImageStatus(status model.ImageStatus) model.ImageStatus {
 	switch strings.ToLower(string(status)) {
 	case "pending":
-		return model.ManifestPending
+		return model.ImagePending
 	case "running":
-		return model.ManifestRunning
+		return model.ImageRunning
 	case "succeeded":
-		return model.ManifestSucceeded
+		return model.ImageSucceeded
 	case "failed":
-		return model.ManifestFailed
+		return model.ImageFailed
 	default:
 		return status
 	}

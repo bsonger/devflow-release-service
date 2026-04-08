@@ -85,7 +85,7 @@
                 }
             }
         },
-        "/api/v1/manifests": {
+        "/api/v1/images": {
             "get": {
                 "tags": [
                     "Manifest"
@@ -145,7 +145,7 @@
                 }
             }
         },
-        "/api/v1/manifests/{id}": {
+        "/api/v1/images/{id}": {
             "get": {
                 "tags": [
                     "Manifest"
@@ -400,10 +400,10 @@
                 "lease_expires_at": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
-                "manifest_name": {
+                "image_name": {
                     "type": "string"
                 },
                 "message": {
@@ -636,10 +636,10 @@
                 "id": {
                     "type": "string"
                 },
-                "manifest_id": {
+                "image_id": {
                     "type": "string"
                 },
-                "manifest_name": {
+                "image_name": {
                     "type": "string"
                 },
                 "project_name": {

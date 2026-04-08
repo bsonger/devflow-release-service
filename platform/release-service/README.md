@@ -18,8 +18,8 @@ For public API shape, ownership, and resource details, prefer:
 
 - manifest routes / handlers / logic:
   - `pkg/router/manifest.go`
-  - `pkg/api/manifest.go`
-  - `pkg/service/manifest.go`
+  - `pkg/api/image.go`
+  - `pkg/service/image.go`
 - release routes / handlers / logic:
   - `pkg/router/release.go`
   - `pkg/api/release.go`
@@ -31,7 +31,7 @@ For public API shape, ownership, and resource details, prefer:
 
 ## Execution-side integration points
 
-- Tekton build dispatch is triggered from `pkg/service/manifest.go`
+- Tekton build dispatch is triggered from `pkg/service/image.go`
 - Argo / Kubernetes Application sync is triggered from `pkg/service/release.go`
 
 ## Platform dependencies

@@ -16,10 +16,10 @@ import (
 
 type stubImageWritebackService struct {
 	assignFn  func(context.Context, uuid.UUID, string) error
-	statusFn  func(context.Context, uuid.UUID, model.ManifestStatus) error
+	statusFn  func(context.Context, uuid.UUID, model.ImageStatus) error
 	stepFn    func(context.Context, string, string, model.StepStatus, string, *time.Time, *time.Time) error
 	taskRunFn func(context.Context, string, string, string) error
-	getFn     func(context.Context, uuid.UUID) (*model.Manifest, error)
+	getFn     func(context.Context, uuid.UUID) (*model.Image, error)
 }
 
 func (s stubImageWritebackService) AssignPipelineID(ctx context.Context, imageID uuid.UUID, pipelineID string) error {
@@ -29,7 +29,7 @@ func (s stubImageWritebackService) AssignPipelineID(ctx context.Context, imageID
 	return s.assignFn(ctx, imageID, pipelineID)
 }
 
-func (s stubImageWritebackService) UpdateManifestStatusByID(ctx context.Context, imageID uuid.UUID, status model.ManifestStatus) error {
+func (s stubImageWritebackService) UpdateImageStatusByID(ctx context.Context, imageID uuid.UUID, status model.ImageStatus) error {
 	if s.statusFn == nil {
 		return nil
 	}
@@ -50,7 +50,7 @@ func (s stubImageWritebackService) BindTaskRun(ctx context.Context, pipelineID, 
 	return s.taskRunFn(ctx, pipelineID, taskName, taskRun)
 }
 
-func (s stubImageWritebackService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
+func (s stubImageWritebackService) Get(ctx context.Context, id uuid.UUID) (*model.Image, error) {
 	if s.getFn == nil {
 		return nil, sql.ErrNoRows
 	}
@@ -110,8 +110,8 @@ func TestHandleImageStatusEventUpdatesImage(t *testing.T) {
 			}
 			return nil
 		},
-		statusFn: func(_ context.Context, got uuid.UUID, status model.ManifestStatus) error {
-			called = got == imageID && status == model.ManifestRunning
+		statusFn: func(_ context.Context, got uuid.UUID, status model.ImageStatus) error {
+			called = got == imageID && status == model.ImageRunning
 			return nil
 		},
 	}}

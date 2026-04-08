@@ -7,7 +7,7 @@ type Release struct {
 
 	ExecutionIntentID *uuid.UUID    `json:"execution_intent_id,omitempty" db:"execution_intent_id"`
 	ApplicationID     uuid.UUID     `json:"application_id" db:"application_id"`
-	ManifestID        uuid.UUID     `json:"manifest_id" db:"manifest_id"`
+	ImageID           uuid.UUID     `json:"image_id" db:"image_id"`
 	Env               string        `json:"env" db:"env"`
 	Type              string        `json:"type" db:"type"`
 	Steps             []ReleaseStep `json:"steps,omitempty" db:"steps"`

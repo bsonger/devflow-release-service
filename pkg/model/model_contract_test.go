@@ -7,33 +7,33 @@ import (
 	"github.com/google/uuid"
 )
 
-func TestManifestContract(t *testing.T) {
-	typ := reflect.TypeOf(Manifest{})
+func TestImageContract(t *testing.T) {
+	typ := reflect.TypeOf(Image{})
 	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ConfigurationRevisionID", "RuntimeSpecRevisionID", "Name", "Branch", "RepoAddress", "PipelineID", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
-			t.Fatalf("Manifest missing field %s", field)
+			t.Fatalf("Image missing field %s", field)
 		}
 		if field == "ApplicationID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
-			t.Fatalf("Manifest.ApplicationID type = %v, want uuid.UUID", f.Type)
+			t.Fatalf("Image.ApplicationID type = %v, want uuid.UUID", f.Type)
 		}
 	}
 	for _, removed := range []string{"ApplicationName", "GitRepo", "ConfigMaps", "Service", "Internet", "Envs", "Replica", "Type", "Services"} {
 		if _, ok := typ.FieldByName(removed); ok {
-			t.Fatalf("Manifest should not expose legacy field %s", removed)
+			t.Fatalf("Image should not expose legacy field %s", removed)
 		}
 	}
 }
 
 func TestReleaseContract(t *testing.T) {
 	typ := reflect.TypeOf(Release{})
-	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ManifestID", "Env", "Type", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ImageID", "Env", "Type", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Release missing field %s", field)
 		}
-		if field == "ManifestID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
-			t.Fatalf("Release.ManifestID type = %v, want uuid.UUID", f.Type)
+		if field == "ImageID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
+			t.Fatalf("Release.ImageID type = %v, want uuid.UUID", f.Type)
 		}
 	}
 }

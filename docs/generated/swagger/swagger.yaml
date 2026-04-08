@@ -54,9 +54,9 @@ definitions:
         type: string
       lease_expires_at:
         type: string
-      manifest_id:
+      image_id:
         type: string
-      manifest_name:
+      image_name:
         type: string
       message:
         type: string
@@ -215,9 +215,9 @@ definitions:
         type: string
       id:
         type: string
-      manifest_id:
+      image_id:
         type: string
-      manifest_name:
+      image_name:
         type: string
       project_name:
         type: string
@@ -352,7 +352,7 @@ paths:
       summary: 获取执行意图
       tags:
       - Intent
-  /api/v1/manifests:
+  /api/v1/images:
     get:
       responses:
         "200":
@@ -391,7 +391,7 @@ paths:
       summary: 创建 Manifest
       tags:
       - Manifest
-  /api/v1/manifests/{id}:
+  /api/v1/images/{id}:
     get:
       parameters:
       - description: Manifest ID
