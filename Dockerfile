@@ -1,11 +1,9 @@
-FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.8 AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang-builder:1.25.8 AS builder
 
 WORKDIR /app
 
 ENV GOPROXY=https://goproxy.cn,direct
 ENV GOPRIVATE=github.com/bsonger/*
-
-RUN apk add --no-cache git openssh-client
 
 COPY .tekton-ssh /root/.ssh
 RUN chmod 700 /root/.ssh && \
