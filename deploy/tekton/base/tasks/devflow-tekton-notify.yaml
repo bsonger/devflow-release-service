@@ -12,6 +12,6 @@ spec:
       type: string
   steps:
     - name: echo
-      image: alpine:3.19
+      image: alpine:3.22
       script: |
         echo "$(params.message)"

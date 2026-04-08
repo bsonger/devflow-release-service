@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.7 AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.8 AS builder
 
 WORKDIR /app
 
@@ -19,7 +19,7 @@ RUN rm -rf /root/.ssh /app/.tekton-ssh
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o devflow-release-service ./cmd
 
-FROM alpine:3.19
+FROM alpine:3.22
 
 WORKDIR /app
 

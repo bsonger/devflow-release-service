@@ -1,4 +1,4 @@
-FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.7 AS builder
+FROM registry.cn-hangzhou.aliyuncs.com/devflow/golang:1.25.8 AS builder
 
 WORKDIR /workspace
 ENV GOPROXY=https://goproxy.cn,direct
