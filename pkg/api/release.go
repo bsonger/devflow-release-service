@@ -26,6 +26,15 @@ type ReleaseHandler struct {
 	svc releaseService
 }
 
+type ReleaseResponse struct {
+	Data *model.Release `json:"data"`
+}
+
+type ReleaseListResponse struct {
+	Data       []*model.Release `json:"data"`
+	Pagination httpx.Pagination `json:"pagination"`
+}
+
 func NewReleaseHandler() *ReleaseHandler {
 	return &ReleaseHandler{svc: service.ReleaseService}
 }
@@ -43,7 +52,7 @@ type CreateReleaseRequest struct {
 // @Accept json
 // @Produce json
 // @Param data body api.CreateReleaseRequest true "Release Data"
-// @Success 201 {object} httpx.DataResponse[model.Release]
+// @Success 201 {object} api.ReleaseResponse
 // @Router /api/v1/releases [post]
 func (h *ReleaseHandler) Create(c *gin.Context) {
 	var req CreateReleaseRequest
@@ -74,7 +83,7 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 // @Summary 获取Release
 // @Tags Release
 // @Param id path string true "Release ID"
-// @Success 200 {object} httpx.DataResponse[model.Release]
+// @Success 200 {object} api.ReleaseResponse
 // @Router /api/v1/releases/{id} [get]
 func (h *ReleaseHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
@@ -99,7 +108,7 @@ func (h *ReleaseHandler) Get(c *gin.Context) {
 // List
 // @Summary 获取Release列表
 // @Tags Release
-// @Success 200 {object} httpx.ListResponse[*model.Release]
+// @Success 200 {object} api.ReleaseListResponse
 // @Router /api/v1/releases [get]
 func (h *ReleaseHandler) List(c *gin.Context) {
 	filter := service.ReleaseListFilter{IncludeDeleted: httpx.IncludeDeleted(c)}

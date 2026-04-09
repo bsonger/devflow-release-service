@@ -1,39 +1,45 @@
 definitions:
-  api.CreateResponse:
+  api.CreateReleaseRequest:
     properties:
-      execution_intent_id:
+      env:
         type: string
-      id:
+      image_id:
+        type: string
+      type:
         type: string
     type: object
-  model.ConfigMap:
+  api.IntentListResponse:
     properties:
-      files_path:
-        additionalProperties:
-          type: string
-        type: object
-      mount_path:
-        type: string
-      name:
-        type: string
+      data:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent'
+        type: array
+      pagination:
+        $ref: '#/definitions/httpx.Pagination'
     type: object
-  model.EnvVar:
+  api.IntentResponse:
     properties:
-      name:
-        type: string
-      value:
-        type: string
+      data:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent'
     type: object
-  model.Intent:
+  api.ReleaseListResponse:
     properties:
-      application_id:
-        type: string
-      application_name:
-        type: string
+      data:
+        items:
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Release'
+        type: array
+      pagination:
+        $ref: '#/definitions/httpx.Pagination'
+    type: object
+  api.ReleaseResponse:
+    properties:
+      data:
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Release'
+    type: object
+  github_com_bsonger_devflow-release-service_pkg_model.Intent:
+    properties:
       attempt_count:
         type: integer
-      branch:
-        type: string
       claimed_at:
         type: string
       claimed_by:
@@ -42,40 +48,28 @@ definitions:
         type: string
       deleted_at:
         type: string
-      env:
-        type: string
-      external_ref:
-        type: string
       id:
         type: string
       kind:
-        $ref: '#/definitions/model.IntentKind'
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentKind'
       last_error:
         type: string
       lease_expires_at:
         type: string
-      image_id:
-        type: string
-      image_name:
-        type: string
       message:
-        type: string
-      release_id:
-        type: string
-      release_type:
-        type: string
-      repo_url:
         type: string
       resource_id:
         type: string
       resource_type:
         type: string
       status:
-        $ref: '#/definitions/model.IntentStatus'
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentStatus'
+      trace_id:
+        type: string
       updated_at:
         type: string
     type: object
-  model.IntentKind:
+  github_com_bsonger_devflow-release-service_pkg_model.IntentKind:
     enum:
     - build
     - release
@@ -83,7 +77,7 @@ definitions:
     x-enum-varnames:
     - IntentKindBuild
     - IntentKindRelease
-  model.IntentStatus:
+  github_com_bsonger_devflow-release-service_pkg_model.IntentStatus:
     enum:
     - Pending
     - Running
@@ -95,115 +89,9 @@ definitions:
     - IntentRunning
     - IntentSucceeded
     - IntentFailed
-  model.Internet:
-    enum:
-    - internal
-    - external
-    type: string
-    x-enum-varnames:
-    - Internal
-    - External
-  model.Manifest:
+  github_com_bsonger_devflow-release-service_pkg_model.Release:
     properties:
       application_id:
-        type: string
-      application_name:
-        type: string
-      branch:
-        type: string
-      commit_hash:
-        type: string
-      config_maps:
-        items:
-          $ref: '#/definitions/model.ConfigMap'
-        type: array
-      created_at:
-        type: string
-      deleted_at:
-        type: string
-      digest:
-        type: string
-      envs:
-        additionalProperties:
-          items:
-            $ref: '#/definitions/model.EnvVar'
-          type: array
-        type: object
-      execution_intent_id:
-        type: string
-      git_repo:
-        type: string
-      id:
-        type: string
-      internet:
-        $ref: '#/definitions/model.Internet'
-      name:
-        type: string
-      pipeline_id:
-        type: string
-      replica:
-        type: integer
-      service:
-        $ref: '#/definitions/model.Service'
-      status:
-        $ref: '#/definitions/model.ManifestStatus'
-      steps:
-        items:
-          $ref: '#/definitions/model.ManifestStep'
-        type: array
-      type:
-        $ref: '#/definitions/model.ReleaseType'
-      updated_at:
-        type: string
-    type: object
-  model.ManifestStatus:
-    enum:
-    - Pending
-    - Running
-    - Succeeded
-    - Failed
-    type: string
-    x-enum-varnames:
-    - ManifestPending
-    - ManifestRunning
-    - ManifestSucceeded
-    - ManifestFailed
-  model.ManifestStep:
-    properties:
-      end_time:
-        type: string
-      message:
-        type: string
-      start_time:
-        type: string
-      status:
-        $ref: '#/definitions/model.StepStatus'
-      task_name:
-        type: string
-      task_run:
-        type: string
-    type: object
-  model.PatchManifestRequest:
-    properties:
-      commit_hash:
-        type: string
-      digest:
-        type: string
-    type: object
-  model.Port:
-    properties:
-      name:
-        type: string
-      port:
-        type: integer
-      target_port:
-        type: integer
-    type: object
-  model.Release:
-    properties:
-      application_id:
-        type: string
-      application_name:
         type: string
       created_at:
         type: string
@@ -213,26 +101,24 @@ definitions:
         type: string
       execution_intent_id:
         type: string
+      external_ref:
+        type: string
       id:
         type: string
       image_id:
         type: string
-      image_name:
-        type: string
-      project_name:
-        type: string
       status:
-        $ref: '#/definitions/model.ReleaseStatus'
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseStatus'
       steps:
         items:
-          $ref: '#/definitions/model.ReleaseStep'
+          $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseStep'
         type: array
       type:
         type: string
       updated_at:
         type: string
     type: object
-  model.ReleaseStatus:
+  github_com_bsonger_devflow-release-service_pkg_model.ReleaseStatus:
     enum:
     - Pending
     - Running
@@ -252,7 +138,7 @@ definitions:
     - ReleaseRolledBack
     - ReleaseSyncing
     - ReleaseSyncFailed
-  model.ReleaseStep:
+  github_com_bsonger_devflow-release-service_pkg_model.ReleaseStep:
     properties:
       end_time:
         type: string
@@ -265,26 +151,9 @@ definitions:
       start_time:
         type: string
       status:
-        $ref: '#/definitions/model.StepStatus'
+        $ref: '#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus'
     type: object
-  model.ReleaseType:
-    enum:
-    - normal
-    - canary
-    - blue-green
-    type: string
-    x-enum-varnames:
-    - Normal
-    - Canary
-    - BlueGreen
-  model.Service:
-    properties:
-      ports:
-        items:
-          $ref: '#/definitions/model.Port'
-        type: array
-    type: object
-  model.StepStatus:
+  github_com_bsonger_devflow-release-service_pkg_model.StepStatus:
     enum:
     - Pending
     - Running
@@ -296,31 +165,32 @@ definitions:
     - StepRunning
     - StepSucceeded
     - StepFailed
+  httpx.Pagination:
+    properties:
+      enabled:
+        type: boolean
+      limit:
+        type: integer
+      offset:
+        type: integer
+      page:
+        type: integer
+      page_size:
+        type: integer
+      total:
+        type: integer
+    type: object
 info:
   contact: {}
 paths:
   /api/v1/intents:
     get:
-      description: 按 kind、status、resource、application 等维度查询 execution intents
+      description: 按 kind、status、resource 等维度查询 execution intents
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Intent'
-            type: array
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.IntentListResponse'
       summary: 获取执行意图列表
       tags:
       - Intent
@@ -336,131 +206,17 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Intent'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
+            $ref: '#/definitions/api.IntentResponse'
       summary: 获取执行意图
       tags:
       - Intent
-  /api/v1/images:
-    get:
-      responses:
-        "200":
-          description: OK
-          schema:
-            items:
-              $ref: '#/definitions/model.Manifest'
-            type: array
-      summary: 获取应用列表
-      tags:
-      - Manifest
-    post:
-      consumes:
-      - application/json
-      description: 根据 Manifest 创建 Manifest，自动生成名称
-      parameters:
-      - description: Manifest 数据（branch 必填）
-        in: body
-        name: data
-        required: true
-        schema:
-          $ref: '#/definitions/model.Manifest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/api.CreateResponse'
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: 创建 Manifest
-      tags:
-      - Manifest
-  /api/v1/images/{id}:
-    get:
-      parameters:
-      - description: Manifest ID
-        in: path
-        name: id
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/model.Manifest'
-      summary: 获取应用
-      tags:
-      - Manifest
-    patch:
-      consumes:
-      - application/json
-      description: 部分更新 Manifest（仅支持 digest / commit_hash）
-      parameters:
-      - description: Manifest ID
-        in: path
-        name: id
-        required: true
-        type: string
-      - description: Patch 数据
-        in: body
-        name: data
-        schema:
-          $ref: '#/definitions/model.PatchManifestRequest'
-      produces:
-      - application/json
-      responses:
-        "200":
-          description: OK
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "400":
-          description: Bad Request
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "404":
-          description: Not Found
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-        "500":
-          description: Internal Server Error
-          schema:
-            additionalProperties:
-              type: string
-            type: object
-      summary: Patch Manifest
-      tags:
-      - Manifest
   /api/v1/releases:
     get:
       responses:
         "200":
           description: OK
           schema:
-            items:
-              $ref: '#/definitions/model.Release'
-            type: array
+            $ref: '#/definitions/api.ReleaseListResponse'
       summary: 获取Release列表
       tags:
       - Release
@@ -474,14 +230,14 @@ paths:
         name: data
         required: true
         schema:
-          $ref: '#/definitions/model.Release'
+          $ref: '#/definitions/api.CreateReleaseRequest'
       produces:
       - application/json
       responses:
-        "200":
-          description: OK
+        "201":
+          description: Created
           schema:
-            $ref: '#/definitions/api.CreateResponse'
+            $ref: '#/definitions/api.ReleaseResponse'
       summary: 创建Release
       tags:
       - Release
@@ -497,7 +253,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/model.Release'
+            $ref: '#/definitions/api.ReleaseResponse'
       summary: 获取Release
       tags:
       - Release

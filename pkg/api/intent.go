@@ -26,6 +26,15 @@ type IntentHandler struct {
 	svc intentService
 }
 
+type IntentResponse struct {
+	Data *model.Intent `json:"data"`
+}
+
+type IntentListResponse struct {
+	Data       []*model.Intent  `json:"data"`
+	Pagination httpx.Pagination `json:"pagination"`
+}
+
 func NewIntentHandler() *IntentHandler {
 	return &IntentHandler{svc: service.IntentService}
 }
@@ -34,7 +43,7 @@ func NewIntentHandler() *IntentHandler {
 // @Summary 获取执行意图列表
 // @Description 按 kind、status、resource 等维度查询 execution intents
 // @Tags Intent
-// @Success 200 {object} httpx.ListResponse[*model.Intent]
+// @Success 200 {object} api.IntentListResponse
 // @Router /api/v1/intents [get]
 func (h *IntentHandler) List(c *gin.Context) {
 	filter, err := buildIntentFilter(c)
@@ -64,7 +73,7 @@ func (h *IntentHandler) List(c *gin.Context) {
 // @Summary 获取执行意图
 // @Tags Intent
 // @Param id path string true "Intent ID"
-// @Success 200 {object} httpx.DataResponse[model.Intent]
+// @Success 200 {object} api.IntentResponse
 // @Router /api/v1/intents/{id} [get]
 func (h *IntentHandler) Get(c *gin.Context) {
 	id, err := uuid.Parse(c.Param("id"))
