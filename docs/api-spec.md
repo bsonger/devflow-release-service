@@ -2,18 +2,18 @@
 
 ## Purpose
 
-`devflow-release-service` defines the converged public HTTP API surface for the release control-plane resources:
-- `Manifest`
+`devflow-release-service` defines the public HTTP API surface for release control-plane resources:
+
+- `Image`
 - `Release`
 - `Intent`
 
-## Endpoint Groups
+## Swagger
 
-### `Manifest`
-- `GET /api/v1/images`
-- `POST /api/v1/images`
-- `GET /api/v1/images/{id}`
-- `PATCH /api/v1/images/{id}`
+- local UI: `/swagger/index.html`
+- generated source: `docs/generated/swagger/swagger.yaml`
+
+## Endpoint Groups
 
 ### `Image`
 - `GET /api/v1/images`
@@ -37,16 +37,15 @@
 ## Request Rules
 
 - `POST /api/v1/images` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
-- manifest creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
-- `POST /api/v1/images` is the product-facing alias for build record creation
+- image creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
 - observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
-- `repo_address` and manifest naming are resolved during manifest creation
-- image registry target is read from global backend config: `IMAGE_REGISTRY` + `IMAGE_REGISTRY_NAMESPACE`
+- `repo_address` and image naming are resolved during image creation
+- image registry target is read from backend config: `IMAGE_REGISTRY` and `IMAGE_REGISTRY_NAMESPACE`
 - image names follow branch rules: `main` keeps the base name, non-`main` appends a normalized branch suffix
-- image tags are generated as `YYYYMMDD-HHmmss`
+- image tags prefer an exact Git tag on `HEAD`; when absent they fall back to `YYYYMMDD-HHmmss`
 - `POST /api/v1/releases` accepts `image_id`, optional `env`, and optional release `type`
-- release creation validates that the referenced manifest has a valid `runtime_spec_revision_id` bound through runtime-service
-- `PATCH /api/v1/images/{id}` only supports patch fields such as `commit_hash` and `digest`
+- release creation validates that the referenced image has a valid `runtime_spec_revision_id` bound through runtime-service
+- `PATCH /api/v1/images/{id}` supports build/writeback fields such as `commit_hash`, `digest`, `tag`, and status payloads
 - list endpoints use `page` and `page_size`
 
 ## Response Rules
@@ -61,13 +60,9 @@
 
 - invalid ID or malformed request body -> `400 invalid_argument`
 - resource not found -> `404 not_found`
-- manifest/runtime binding precondition failure -> `409 failed_precondition`
-- storage/execution uncategorized internal error -> `500 internal`
+- image/runtime binding precondition failure -> `409 failed_precondition`
+- storage or execution internal error -> `500 internal`
 
 ## Boundary Note
 
 For repo scope and non-goals, see `docs/architecture.md`.
-
-## Swagger Note
-
-Generated Swagger artifacts must stay aligned with the current PostgreSQL-backed API contract. Regenerate them after route, request, or response changes.

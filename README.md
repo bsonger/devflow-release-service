@@ -1,6 +1,6 @@
 # DevFlow Release Service
 
-`devflow-release-service` is the backend owner for `Manifest`, `Release`, and `Intent`.
+`devflow-release-service` is the backend owner for `Image`, `Release`, and `Intent`.
 
 ## Backend Role
 
@@ -27,6 +27,7 @@ Naming is normalized with the `devflow-tekton-` prefix.
 - `go run ./cmd`
 - `go build ./cmd/main.go`
 - `go test ./...`
+- Swagger UI: `/swagger/index.html`
 
 ## Key Docs
 
@@ -34,3 +35,4 @@ Naming is normalized with the `devflow-tekton-` prefix.
 - `docs/api-spec.md`
 - `docs/constraints.md`
 - `docs/resources/README.md`
+- `docs/generated/swagger/swagger.yaml`
