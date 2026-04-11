@@ -3,4 +3,3 @@ set -euo pipefail
 
 go test ./...
 bash scripts/build.sh
-bash scripts/regen-swagger.sh
