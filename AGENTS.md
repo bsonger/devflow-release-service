@@ -17,5 +17,16 @@ If ownership, compatibility, or boundary questions appear, go back to `../devflo
 - `go test ./...`
 - `bash scripts/build.sh`
 
+## API change completion
+- Update `docs/api-spec.md` in the same change as the handler or transport change.
+- Regenerate `docs/generated/swagger/*` with `bash scripts/regen-swagger.sh` before handoff.
+- Sync `../devflow-control/docs/API_SURFACE.md` when the public contract or ownership summary changed.
+- Review `../devflow-control/docs/policies/api-compatibility.md` before shipping any non-backward-compatible change.
+
+## Before handoff
+- Rerun `go test ./...`.
+- Rerun `bash scripts/build.sh`.
+- Ensure `docs/api-spec.md` and `docs/generated/swagger/*` are not stale.
+
 ## When to go back to devflow-control
 Go back when the task changes release/build ownership, manifest semantics, API compatibility expectations, or control-layer summaries.
