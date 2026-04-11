@@ -26,7 +26,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.IntentListResponse"
+                            "$ref": "#/definitions/pkg_api.IntentListResponse"
                         }
                     }
                 }
@@ -51,7 +51,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.IntentResponse"
+                            "$ref": "#/definitions/pkg_api.IntentResponse"
                         }
                     }
                 }
@@ -102,7 +102,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ManifestListResponse"
+                            "$ref": "#/definitions/pkg_api.ManifestListResponse"
                         }
                     },
                     "400": {
@@ -137,7 +137,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.CreateManifestRequestDoc"
+                            "$ref": "#/definitions/pkg_api.CreateManifestRequestDoc"
                         }
                     }
                 ],
@@ -145,7 +145,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/api.ManifestResponse"
+                            "$ref": "#/definitions/pkg_api.ManifestResponse"
                         }
                     },
                     "400": {
@@ -197,7 +197,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ManifestResponse"
+                            "$ref": "#/definitions/pkg_api.ManifestResponse"
                         }
                     },
                     "400": {
@@ -231,7 +231,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ReleaseListResponse"
+                            "$ref": "#/definitions/pkg_api.ReleaseListResponse"
                         }
                     }
                 }
@@ -255,7 +255,7 @@ const docTemplate = `{
                         "in": "body",
                         "required": true,
                         "schema": {
-                            "$ref": "#/definitions/api.CreateReleaseRequest"
+                            "$ref": "#/definitions/pkg_api.CreateReleaseRequest"
                         }
                     }
                 ],
@@ -263,7 +263,7 @@ const docTemplate = `{
                     "201": {
                         "description": "Created",
                         "schema": {
-                            "$ref": "#/definitions/api.ReleaseResponse"
+                            "$ref": "#/definitions/pkg_api.ReleaseResponse"
                         }
                     }
                 }
@@ -288,7 +288,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/api.ReleaseResponse"
+                            "$ref": "#/definitions/pkg_api.ReleaseResponse"
                         }
                     }
                 }
@@ -296,7 +296,53 @@ const docTemplate = `{
         }
     },
     "definitions": {
-        "api.CreateManifestRequestDoc": {
+        "httpx.APIError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpx.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/httpx.APIError"
+                }
+            }
+        },
+        "httpx.Pagination": {
+            "type": "object",
+            "properties": {
+                "enabled": {
+                    "type": "boolean"
+                },
+                "limit": {
+                    "type": "integer"
+                },
+                "offset": {
+                    "type": "integer"
+                },
+                "page": {
+                    "type": "integer"
+                },
+                "page_size": {
+                    "type": "integer"
+                },
+                "total": {
+                    "type": "integer"
+                }
+            }
+        },
+        "pkg_api.CreateManifestRequestDoc": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -310,7 +356,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.CreateReleaseRequest": {
+        "pkg_api.CreateReleaseRequest": {
             "type": "object",
             "properties": {
                 "env": {
@@ -324,7 +370,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.IntentDoc": {
+        "pkg_api.IntentDoc": {
             "type": "object",
             "properties": {
                 "attempt_count": {
@@ -371,13 +417,13 @@ const docTemplate = `{
                 }
             }
         },
-        "api.IntentListResponse": {
+        "pkg_api.IntentListResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.IntentDoc"
+                        "$ref": "#/definitions/pkg_api.IntentDoc"
                     }
                 },
                 "pagination": {
@@ -385,15 +431,15 @@ const docTemplate = `{
                 }
             }
         },
-        "api.IntentResponse": {
+        "pkg_api.IntentResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/api.IntentDoc"
+                    "$ref": "#/definitions/pkg_api.IntentDoc"
                 }
             }
         },
-        "api.ManifestAppConfigDoc": {
+        "pkg_api.ManifestAppConfigDoc": {
             "type": "object",
             "properties": {
                 "data": {
@@ -405,7 +451,7 @@ const docTemplate = `{
                 "files": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestFileDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestFileDoc"
                     }
                 },
                 "id": {
@@ -425,11 +471,11 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestDoc": {
+        "pkg_api.ManifestDoc": {
             "type": "object",
             "properties": {
                 "app_config_snapshot": {
-                    "$ref": "#/definitions/api.ManifestAppConfigDoc"
+                    "$ref": "#/definitions/pkg_api.ManifestAppConfigDoc"
                 },
                 "application_id": {
                     "type": "string"
@@ -452,7 +498,7 @@ const docTemplate = `{
                 "rendered_objects": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestRenderedObjectDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestRenderedObjectDoc"
                     }
                 },
                 "rendered_yaml": {
@@ -461,13 +507,13 @@ const docTemplate = `{
                 "routes_snapshot": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestRouteDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestRouteDoc"
                     }
                 },
                 "services_snapshot": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestServiceDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestServiceDoc"
                     }
                 },
                 "status": {
@@ -477,11 +523,11 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "workload_config_snapshot": {
-                    "$ref": "#/definitions/api.ManifestWorkloadConfigDoc"
+                    "$ref": "#/definitions/pkg_api.ManifestWorkloadConfigDoc"
                 }
             }
         },
-        "api.ManifestEnvVarDoc": {
+        "pkg_api.ManifestEnvVarDoc": {
             "type": "object",
             "properties": {
                 "name": {
@@ -492,7 +538,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestFileDoc": {
+        "pkg_api.ManifestFileDoc": {
             "type": "object",
             "properties": {
                 "content": {
@@ -503,13 +549,13 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestListResponse": {
+        "pkg_api.ManifestListResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestDoc"
                     }
                 },
                 "pagination": {
@@ -517,7 +563,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestRenderedObjectDoc": {
+        "pkg_api.ManifestRenderedObjectDoc": {
             "type": "object",
             "properties": {
                 "kind": {
@@ -534,15 +580,15 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestResponse": {
+        "pkg_api.ManifestResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/api.ManifestDoc"
+                    "$ref": "#/definitions/pkg_api.ManifestDoc"
                 }
             }
         },
-        "api.ManifestRouteDoc": {
+        "pkg_api.ManifestRouteDoc": {
             "type": "object",
             "properties": {
                 "host": {
@@ -565,7 +611,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestServiceDoc": {
+        "pkg_api.ManifestServiceDoc": {
             "type": "object",
             "properties": {
                 "id": {
@@ -577,12 +623,12 @@ const docTemplate = `{
                 "ports": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestServicePortDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestServicePortDoc"
                     }
                 }
             }
         },
-        "api.ManifestServicePortDoc": {
+        "pkg_api.ManifestServicePortDoc": {
             "type": "object",
             "properties": {
                 "name": {
@@ -599,13 +645,13 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ManifestWorkloadConfigDoc": {
+        "pkg_api.ManifestWorkloadConfigDoc": {
             "type": "object",
             "properties": {
                 "env": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ManifestEnvVarDoc"
+                        "$ref": "#/definitions/pkg_api.ManifestEnvVarDoc"
                     }
                 },
                 "id": {
@@ -633,7 +679,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ReleaseDoc": {
+        "pkg_api.ReleaseDoc": {
             "type": "object",
             "properties": {
                 "application_id": {
@@ -663,7 +709,7 @@ const docTemplate = `{
                 "steps": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ReleaseStepDoc"
+                        "$ref": "#/definitions/pkg_api.ReleaseStepDoc"
                     }
                 },
                 "type": {
@@ -674,13 +720,13 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ReleaseListResponse": {
+        "pkg_api.ReleaseListResponse": {
             "type": "object",
             "properties": {
                 "data": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/api.ReleaseDoc"
+                        "$ref": "#/definitions/pkg_api.ReleaseDoc"
                     }
                 },
                 "pagination": {
@@ -688,15 +734,15 @@ const docTemplate = `{
                 }
             }
         },
-        "api.ReleaseResponse": {
+        "pkg_api.ReleaseResponse": {
             "type": "object",
             "properties": {
                 "data": {
-                    "$ref": "#/definitions/api.ReleaseDoc"
+                    "$ref": "#/definitions/pkg_api.ReleaseDoc"
                 }
             }
         },
-        "api.ReleaseStepDoc": {
+        "pkg_api.ReleaseStepDoc": {
             "type": "object",
             "properties": {
                 "end_time": {
@@ -716,52 +762,6 @@ const docTemplate = `{
                 },
                 "status": {
                     "type": "string"
-                }
-            }
-        },
-        "httpx.APIError": {
-            "type": "object",
-            "properties": {
-                "code": {
-                    "type": "string"
-                },
-                "details": {
-                    "type": "object",
-                    "additionalProperties": {}
-                },
-                "message": {
-                    "type": "string"
-                }
-            }
-        },
-        "httpx.ErrorResponse": {
-            "type": "object",
-            "properties": {
-                "error": {
-                    "$ref": "#/definitions/httpx.APIError"
-                }
-            }
-        },
-        "httpx.Pagination": {
-            "type": "object",
-            "properties": {
-                "enabled": {
-                    "type": "boolean"
-                },
-                "limit": {
-                    "type": "integer"
-                },
-                "offset": {
-                    "type": "integer"
-                },
-                "page": {
-                    "type": "integer"
-                },
-                "page_size": {
-                    "type": "integer"
-                },
-                "total": {
-                    "type": "integer"
                 }
             }
         }

@@ -9,10 +9,11 @@ Read in this order:
 5. `docs/observability.md`
 
 Public API: yes.
-This repo owns `Manifest`, `Image`, `Release`, and `Intent`.
+This repo owns `Manifest`, `Image`, `Release`, `Intent`.
 If ownership, compatibility, or boundary questions appear, go back to `../devflow-control/docs/system/boundaries.md` and `../devflow-control/docs/policies/api-compatibility.md`.
 
 ## Commands
+- `bash scripts/verify.sh`
 - `bash scripts/regen-swagger.sh`
 - `go test ./...`
 - `bash scripts/build.sh`
@@ -24,9 +25,8 @@ If ownership, compatibility, or boundary questions appear, go back to `../devflo
 - Review `../devflow-control/docs/policies/api-compatibility.md` before shipping any non-backward-compatible change.
 
 ## Before handoff
-- Rerun `go test ./...`.
-- Rerun `bash scripts/build.sh`.
+- Rerun `bash scripts/verify.sh`.
 - Ensure `docs/api-spec.md` and `docs/generated/swagger/*` are not stale.
 
 ## When to go back to devflow-control
-Go back when the task changes release/build ownership, manifest semantics, API compatibility expectations, or control-layer summaries.
+Go back when the task changes ownership, cross-repo flow, API compatibility expectations, or control-layer summaries.
