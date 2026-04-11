@@ -6,6 +6,7 @@ Read in this order:
 2. `docs/architecture.md`
 3. `docs/api-spec.md`
 4. `docs/constraints.md`
+5. `docs/observability.md`
 
 Public API: yes.
 This repo owns `Manifest`, `Image`, `Release`, and `Intent`.
