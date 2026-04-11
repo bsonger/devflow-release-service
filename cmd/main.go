@@ -1,6 +1,7 @@
 package main
 
 import (
+	_ "github.com/bsonger/devflow-release-service/docs/generated/swagger"
 	"github.com/bsonger/devflow-release-service/pkg/config"
 	"github.com/bsonger/devflow-release-service/pkg/router"
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
@@ -30,6 +31,7 @@ func main() {
 			ServiceName:   "release-service",
 			EnableSwagger: true,
 			Modules: []router.Module{
+				router.ModuleManifest,
 				router.ModuleImage,
 				router.ModuleRelease,
 				router.ModuleIntent,

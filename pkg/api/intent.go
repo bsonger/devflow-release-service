@@ -27,11 +27,11 @@ type IntentHandler struct {
 }
 
 type IntentResponse struct {
-	Data *model.Intent `json:"data"`
+	Data *IntentDoc `json:"data"`
 }
 
 type IntentListResponse struct {
-	Data       []*model.Intent  `json:"data"`
+	Data       []*IntentDoc     `json:"data"`
 	Pagination httpx.Pagination `json:"pagination"`
 }
 

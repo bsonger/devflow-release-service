@@ -26,7 +26,7 @@
 |---|---|---|---|---|
 | `kind` | `IntentKind` | required | system | 执行类型，如 `build` / `release` |
 | `status` | `IntentStatus` | required | system | 当前执行状态 |
-| `resource_type` | `string` | required | system | 目标资源类型，如 `manifest` / `release` |
+| `resource_type` | `string` | required | system | 目标资源类型，如 `image` / `release` |
 | `resource_id` | `uuid.UUID` | required | system | 目标资源 ID |
 | `trace_id` | `string` | optional | system | trace 关联 ID |
 | `message` | `string` | optional | system | 最近状态说明 |
@@ -48,7 +48,7 @@
 ## Validation notes
 
 - `Intent` 只拥有执行协调信息
-- 应用、manifest、release、repo、branch 等业务上下文应从目标资源追溯
+- 应用、image、release、repo、branch 等业务上下文应从目标资源追溯
 
 ## Source pointers
 

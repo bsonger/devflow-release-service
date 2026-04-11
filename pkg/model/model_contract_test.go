@@ -38,6 +38,27 @@ func TestReleaseContract(t *testing.T) {
 	}
 }
 
+func TestManifestContract(t *testing.T) {
+	typ := reflect.TypeOf(Manifest{})
+	for _, field := range []string{
+		"ApplicationID",
+		"EnvironmentID",
+		"ImageID",
+		"ImageRef",
+		"ServicesSnapshot",
+		"RoutesSnapshot",
+		"AppConfigSnapshot",
+		"WorkloadConfigSnapshot",
+		"RenderedObjects",
+		"RenderedYAML",
+		"Status",
+	} {
+		if _, ok := typ.FieldByName(field); !ok {
+			t.Fatalf("Manifest missing field %s", field)
+		}
+	}
+}
+
 func TestIntentContract(t *testing.T) {
 	typ := reflect.TypeOf(Intent{})
 	for _, field := range []string{"ResourceID", "TraceID", "Message", "LastError", "ClaimedBy", "AttemptCount"} {

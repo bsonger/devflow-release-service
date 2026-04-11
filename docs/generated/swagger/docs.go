@@ -57,6 +57,170 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/manifests": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manifest"
+                ],
+                "summary": "List manifests",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Application ID",
+                        "name": "application_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Environment ID",
+                        "name": "environment_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Image ID",
+                        "name": "image_id",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page",
+                        "name": "page",
+                        "in": "query"
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Page size",
+                        "name": "page_size",
+                        "in": "query"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ManifestListResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            },
+            "post": {
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manifest"
+                ],
+                "summary": "Create manifest",
+                "parameters": [
+                    {
+                        "description": "Manifest create request",
+                        "name": "data",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/api.CreateManifestRequestDoc"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/api.ManifestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Conflict",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/api/v1/manifests/{id}": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manifest"
+                ],
+                "summary": "Get manifest",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Manifest ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/api.ManifestResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/releases": {
             "get": {
                 "tags": [
@@ -132,6 +296,20 @@ const docTemplate = `{
         }
     },
     "definitions": {
+        "api.CreateManifestRequestDoc": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "environment_id": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
+                }
+            }
+        },
         "api.CreateReleaseRequest": {
             "type": "object",
             "properties": {
@@ -146,51 +324,7 @@ const docTemplate = `{
                 }
             }
         },
-        "api.IntentListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/httpx.Pagination"
-                }
-            }
-        },
-        "api.IntentResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Intent"
-                }
-            }
-        },
-        "api.ReleaseListResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "type": "array",
-                    "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Release"
-                    }
-                },
-                "pagination": {
-                    "$ref": "#/definitions/httpx.Pagination"
-                }
-            }
-        },
-        "api.ReleaseResponse": {
-            "type": "object",
-            "properties": {
-                "data": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.Release"
-                }
-            }
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.Intent": {
+        "api.IntentDoc": {
             "type": "object",
             "properties": {
                 "attempt_count": {
@@ -205,14 +339,11 @@ const docTemplate = `{
                 "created_at": {
                     "type": "string"
                 },
-                "deleted_at": {
-                    "type": "string"
-                },
                 "id": {
                     "type": "string"
                 },
                 "kind": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentKind"
+                    "type": "string"
                 },
                 "last_error": {
                     "type": "string"
@@ -230,7 +361,7 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.IntentStatus"
+                    "type": "string"
                 },
                 "trace_id": {
                     "type": "string"
@@ -240,42 +371,275 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.IntentKind": {
-            "type": "string",
-            "enum": [
-                "build",
-                "release"
-            ],
-            "x-enum-varnames": [
-                "IntentKindBuild",
-                "IntentKindRelease"
-            ]
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.IntentStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed"
-            ],
-            "x-enum-varnames": [
-                "IntentPending",
-                "IntentRunning",
-                "IntentSucceeded",
-                "IntentFailed"
-            ]
-        },
-        "github_com_bsonger_devflow-release-service_pkg_model.Release": {
+        "api.IntentListResponse": {
             "type": "object",
             "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.IntentDoc"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/httpx.Pagination"
+                }
+            }
+        },
+        "api.IntentResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/api.IntentDoc"
+                }
+            }
+        },
+        "api.ManifestAppConfigDoc": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "type": "string"
+                    }
+                },
+                "files": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestFileDoc"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "revision_id": {
+                    "type": "string"
+                },
+                "source_commit": {
+                    "type": "string"
+                },
+                "source_path": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ManifestDoc": {
+            "type": "object",
+            "properties": {
+                "app_config_snapshot": {
+                    "$ref": "#/definitions/api.ManifestAppConfigDoc"
+                },
                 "application_id": {
                     "type": "string"
                 },
                 "created_at": {
                     "type": "string"
                 },
-                "deleted_at": {
+                "environment_id": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "image_id": {
+                    "type": "string"
+                },
+                "image_ref": {
+                    "type": "string"
+                },
+                "rendered_objects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestRenderedObjectDoc"
+                    }
+                },
+                "rendered_yaml": {
+                    "type": "string"
+                },
+                "routes_snapshot": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestRouteDoc"
+                    }
+                },
+                "services_snapshot": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestServiceDoc"
+                    }
+                },
+                "status": {
+                    "type": "string"
+                },
+                "updated_at": {
+                    "type": "string"
+                },
+                "workload_config_snapshot": {
+                    "$ref": "#/definitions/api.ManifestWorkloadConfigDoc"
+                }
+            }
+        },
+        "api.ManifestEnvVarDoc": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "value": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ManifestFileDoc": {
+            "type": "object",
+            "properties": {
+                "content": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ManifestListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestDoc"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/httpx.Pagination"
+                }
+            }
+        },
+        "api.ManifestRenderedObjectDoc": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "yaml": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ManifestResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/api.ManifestDoc"
+                }
+            }
+        },
+        "api.ManifestRouteDoc": {
+            "type": "object",
+            "properties": {
+                "host": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "path": {
+                    "type": "string"
+                },
+                "service_name": {
+                    "type": "string"
+                },
+                "service_port": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.ManifestServiceDoc": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "ports": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestServicePortDoc"
+                    }
+                }
+            }
+        },
+        "api.ManifestServicePortDoc": {
+            "type": "object",
+            "properties": {
+                "name": {
+                    "type": "string"
+                },
+                "protocol": {
+                    "type": "string"
+                },
+                "service_port": {
+                    "type": "integer"
+                },
+                "target_port": {
+                    "type": "integer"
+                }
+            }
+        },
+        "api.ManifestWorkloadConfigDoc": {
+            "type": "object",
+            "properties": {
+                "env": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ManifestEnvVarDoc"
+                    }
+                },
+                "id": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "probes": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "replicas": {
+                    "type": "integer"
+                },
+                "resources": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "strategy": {
+                    "type": "string"
+                },
+                "workload_type": {
+                    "type": "string"
+                }
+            }
+        },
+        "api.ReleaseDoc": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "created_at": {
                     "type": "string"
                 },
                 "env": {
@@ -294,12 +658,12 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseStatus"
+                    "type": "string"
                 },
                 "steps": {
                     "type": "array",
                     "items": {
-                        "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.ReleaseStep"
+                        "$ref": "#/definitions/api.ReleaseStepDoc"
                     }
                 },
                 "type": {
@@ -310,30 +674,29 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.ReleaseStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed",
-                "RollingBack",
-                "RolledBack",
-                "Syncing",
-                "SyncFailed"
-            ],
-            "x-enum-varnames": [
-                "ReleasePending",
-                "ReleaseRunning",
-                "ReleaseSucceeded",
-                "ReleaseFailed",
-                "ReleaseRollingBack",
-                "ReleaseRolledBack",
-                "ReleaseSyncing",
-                "ReleaseSyncFailed"
-            ]
+        "api.ReleaseListResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/api.ReleaseDoc"
+                    }
+                },
+                "pagination": {
+                    "$ref": "#/definitions/httpx.Pagination"
+                }
+            }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.ReleaseStep": {
+        "api.ReleaseResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/api.ReleaseDoc"
+                }
+            }
+        },
+        "api.ReleaseStepDoc": {
             "type": "object",
             "properties": {
                 "end_time": {
@@ -352,24 +715,32 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "status": {
-                    "$ref": "#/definitions/github_com_bsonger_devflow-release-service_pkg_model.StepStatus"
+                    "type": "string"
                 }
             }
         },
-        "github_com_bsonger_devflow-release-service_pkg_model.StepStatus": {
-            "type": "string",
-            "enum": [
-                "Pending",
-                "Running",
-                "Succeeded",
-                "Failed"
-            ],
-            "x-enum-varnames": [
-                "StepPending",
-                "StepRunning",
-                "StepSucceeded",
-                "StepFailed"
-            ]
+        "httpx.APIError": {
+            "type": "object",
+            "properties": {
+                "code": {
+                    "type": "string"
+                },
+                "details": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "message": {
+                    "type": "string"
+                }
+            }
+        },
+        "httpx.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "$ref": "#/definitions/httpx.APIError"
+                }
+            }
         },
         "httpx.Pagination": {
             "type": "object",

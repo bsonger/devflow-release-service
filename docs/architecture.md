@@ -2,9 +2,9 @@
 
 ## Purpose
 
-`devflow-release-service` is the control-plane owner for `Image`/`Manifest`, `Release`, and `Intent`.
+`devflow-release-service` is the control-plane owner for `Image`, `Manifest`, `Release`, and `Intent`.
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
-It freezes build-time repository/service metadata into `Image` records backed by the current manifest store, binds release execution to configuration references, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and in staging runs in direct execution mode so build requests immediately submit the normalized Tekton pipeline `devflow-tekton-image-build`.
+It freezes build-time repository/service metadata into `Image` records, renders deployment snapshots into `Manifest` records, binds release execution to frozen manifests, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and in staging runs in direct execution mode so build requests immediately submit the normalized Tekton pipeline `devflow-tekton-image-build`.
 
 ## Architecture Style
 
@@ -25,8 +25,9 @@ The service layer is the domain center:
 
 The target relational resource model is:
 
-- `Manifest` = build artifact + frozen repository/service snapshot
-- `Release` = deploy command + config reference + rollout state
+- `Image` = build artifact + frozen repository/service snapshot
+- `Manifest` = frozen deployment YAML snapshot built from image + service + route + app config + workload config
+- `Release` = deploy command + manifest reference + rollout state
 - `Intent` = long-running execution tracking record
 
 ## Request Flow
@@ -35,7 +36,7 @@ The target relational resource model is:
 
 ```text
 Client
-  -> manifest/release handler
+  -> image/manifest/release handler
   -> release service logic
   -> control-plane persistence
   -> runtime / external adapter dispatch
@@ -46,7 +47,7 @@ Client
 
 ```text
 Client
-  -> manifest/release/intent handler
+  -> image/manifest/release/intent handler
   -> release query logic
   -> persistence store
   -> HTTP response
@@ -63,7 +64,7 @@ Client
   - route registration
   - module wiring
 - `pkg/api`
-  - manifest/release/intent handlers
+  - image/manifest/release/intent handlers
 - `pkg/service`
   - lifecycle rules
   - command/query logic
@@ -72,7 +73,7 @@ Client
 - `pkg/runtime`
   - execution-mode switching
 - `pkg/model`
-  - `Manifest`, `Release`, `Intent`, related nested types
+  - `Image`, `Manifest`, `Release`, `Intent`, related nested types
 - `pkg/store`
   - persistence primitives
 
@@ -95,12 +96,9 @@ Client
 
 ## Swagger generation
 
-- Run `scripts/regen-swagger.sh` (or the Dockerfile) to generate `docs/generated/swagger`.
+- Run `scripts/regen-swagger.sh` to generate `docs/generated/swagger`.
 - Use `scripts/build.sh` to regenerate swagger and rebuild the binary locally.
 - Export/release tooling expects the bundle in `docs/generated/swagger`, so keep it checked in.
 
-## Swagger generation
-
-- Build image runs `swag init -g cmd/main.go --parseDependency -o docs/generated/swagger` before compiling the binary.
 - Generated swagger files live under `docs/generated/swagger`; preserve them if you export the repo.
 - `scripts/export_service_repo.sh` expects the generated bundle in `docs/generated/swagger` when copying docs.

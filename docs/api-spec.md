@@ -4,6 +4,7 @@
 
 `devflow-release-service` defines the public HTTP API surface for release control-plane resources:
 
+- `Manifest`
 - `Image`
 - `Release`
 - `Intent`
@@ -14,6 +15,11 @@
 - generated source: `docs/generated/swagger/swagger.yaml`
 
 ## Endpoint Groups
+
+### `Manifest`
+- `GET /api/v1/manifests`
+- `POST /api/v1/manifests`
+- `GET /api/v1/manifests/{id}`
 
 ### `Image`
 - `GET /api/v1/images`
@@ -36,6 +42,15 @@
 
 ## Request Rules
 
+- `POST /api/v1/manifests` accepts `application_id`, `environment_id`, and `image_id`
+- manifest creation validates that:
+  - the image belongs to the application
+  - the environment is attached to the application
+  - application routes target existing services and ports
+  - the app config has renderable file data
+  - the workload config exists for the application + environment
+- manifest rendering builds a frozen deployment bundle from services, routes, app config, workload config, and image
+- rendered workload image refs prefer `name@sha256:...`; when digest is missing they fall back to `name:tag`
 - `POST /api/v1/images` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
 - image creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
 - observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
@@ -53,6 +68,9 @@
 - create endpoints return `201` with `{ "data": ... }`
 - get endpoints return `200` with `{ "data": ... }`
 - list endpoints return `{ "data": [...], "pagination": { "page", "page_size", "total" } }`
+- manifest detail responses include:
+  - `rendered_objects`
+  - `rendered_yaml`
 - `PATCH /api/v1/images/{id}` returns `204 No Content`
 - `Intent` is a control-plane query resource and does not expose a general public update/delete CRUD surface
 
@@ -60,6 +78,7 @@
 
 - invalid ID or malformed request body -> `400 invalid_argument`
 - resource not found -> `404 not_found`
+- manifest dependency/binding/rendering precondition failure -> `409 failed_precondition`
 - image/runtime binding precondition failure -> `409 failed_precondition`
 - storage or execution internal error -> `500 internal`
 

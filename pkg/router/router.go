@@ -14,6 +14,7 @@ import (
 type Module string
 
 const (
+	ModuleManifest Module = "manifest"
 	ModuleImage    Module = "image"
 	ModuleRelease  Module = "release"
 	ModuleIntent   Module = "intent"
@@ -31,6 +32,7 @@ func NewRouter() *gin.Engine {
 		ServiceName:   "release-service",
 		EnableSwagger: true,
 		Modules: []Module{
+			ModuleManifest,
 			ModuleImage,
 			ModuleRelease,
 			ModuleIntent,
@@ -76,6 +78,7 @@ func NewRouterWithOptions(opts Options) *gin.Engine {
 
 	if opts.EnableSwagger {
 		r.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+		r.GET("/api/v1/release/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	}
 
 	api := r.Group("/api/v1")
@@ -101,6 +104,8 @@ func registerModules(api *gin.RouterGroup, opts Options) {
 		seen[module] = struct{}{}
 
 		switch module {
+		case ModuleManifest:
+			RegisterManifestRoutes(api)
 		case ModuleImage:
 			RegisterImageRoutes(api)
 		case ModuleRelease:

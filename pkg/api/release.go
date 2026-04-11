@@ -27,11 +27,11 @@ type ReleaseHandler struct {
 }
 
 type ReleaseResponse struct {
-	Data *model.Release `json:"data"`
+	Data *ReleaseDoc `json:"data"`
 }
 
 type ReleaseListResponse struct {
-	Data       []*model.Release `json:"data"`
+	Data       []*ReleaseDoc    `json:"data"`
 	Pagination httpx.Pagination `json:"pagination"`
 }
 

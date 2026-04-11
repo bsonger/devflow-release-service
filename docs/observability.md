@@ -14,7 +14,7 @@ This repo follows the shared telemetry contract implemented in `devflow-service-
 
 `devflow-release-service` should add resource context for:
 
-- `manifest`
+- `image`
 - `release`
 - `intent`
 
@@ -37,7 +37,7 @@ Calls to these systems should always go through shared dependency telemetry help
 - runtime-service
 - Tekton
 - Argo CD
-- Git or manifest repositories
+- Git repositories
 
 ## Profile
 

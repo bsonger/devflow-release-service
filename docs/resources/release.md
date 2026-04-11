@@ -9,7 +9,7 @@
 ## Purpose
 
 `Release` 是一次执行记录。
-它指向一个已经冻结好的 `Manifest`，并记录发布动作、目标环境和执行状态。
+它指向一个已经冻结好的 `Image`，并记录发布动作、目标环境和执行状态。
 
 ## Common base fields
 
@@ -26,8 +26,8 @@
 |---|---|---|---|---|
 | `execution_intent_id` | `*uuid.UUID` | optional | system | 关联的 release intent |
 | `application_id` | `uuid.UUID` | system-derived | system | 应用 ID |
-| `image_id` | `uuid.UUID` | required | user | 发布基于哪个 manifest |
-| `env` | `string` | optional | user/system | 目标环境；默认使用 manifest 绑定的 runtime environment |
+| `image_id` | `uuid.UUID` | required | user | 发布基于哪个 image |
+| `env` | `string` | optional | user/system | 目标环境；默认使用 image 绑定的 runtime environment |
 | `type` | `string` | optional | user/system | 发布动作；为空默认 `Upgrade` |
 | `steps` | `[]ReleaseStep` | system-managed | system | 发布执行步骤 |
 | `status` | `ReleaseStatus` | system-managed | system | 发布状态 |
@@ -58,9 +58,9 @@
 
 ## Validation notes
 
-- `image_id` 必须引用存在的 `Manifest`
-- `Manifest.runtime_spec_revision_id` 必须存在，release 才能创建
-- 若显式传入 `env`，必须和 manifest 绑定的 runtime environment 一致
+- `image_id` 必须引用存在的 `Image`
+- `Image.runtime_spec_revision_id` 必须存在，release 才能创建
+- 若显式传入 `env`，必须和 image 绑定的 runtime environment 一致
 
 ## Source pointers
 

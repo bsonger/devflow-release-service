@@ -6,6 +6,7 @@ type ReleaseType string
 type Internet string
 type StepStatus string
 type ImageStatus string
+type ManifestStatus string
 type ReleaseStatus string
 type IntentKind string
 type IntentStatus string
@@ -33,6 +34,12 @@ const (
 	ImageRunning   ImageStatus = "Running"
 	ImageSucceeded ImageStatus = "Succeeded"
 	ImageFailed    ImageStatus = "Failed"
+)
+
+const (
+	ManifestPending ManifestStatus = "Pending"
+	ManifestReady   ManifestStatus = "Ready"
+	ManifestFailed  ManifestStatus = "Failed"
 )
 
 const (
@@ -70,6 +77,11 @@ type Port struct {
 	Name       string `json:"name"`
 	Port       int    `json:"port"`
 	TargetPort int    `json:"target_port"`
+}
+
+type EnvVar struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type ImageTask struct {

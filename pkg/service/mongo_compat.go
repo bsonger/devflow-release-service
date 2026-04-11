@@ -121,6 +121,68 @@ func scanRelease(scanner interface {
 	return &item, nil
 }
 
+func scanManifest(scanner interface {
+	Scan(dest ...any) error
+}) (*model.Manifest, error) {
+	var (
+		item                model.Manifest
+		servicesJSON        []byte
+		routesJSON          []byte
+		appConfigJSON       []byte
+		workloadConfigJSON  []byte
+		renderedObjectsJSON []byte
+		deletedAt           sql.NullTime
+	)
+	if err := scanner.Scan(
+		&item.ID,
+		&item.ApplicationID,
+		&item.EnvironmentID,
+		&item.ImageID,
+		&item.ImageRef,
+		&servicesJSON,
+		&routesJSON,
+		&appConfigJSON,
+		&workloadConfigJSON,
+		&renderedObjectsJSON,
+		&item.RenderedYAML,
+		&item.Status,
+		&item.CreatedAt,
+		&item.UpdatedAt,
+		&deletedAt,
+	); err != nil {
+		return nil, err
+	}
+	if len(servicesJSON) > 0 {
+		if err := json.Unmarshal(servicesJSON, &item.ServicesSnapshot); err != nil {
+			return nil, err
+		}
+	}
+	if len(routesJSON) > 0 {
+		if err := json.Unmarshal(routesJSON, &item.RoutesSnapshot); err != nil {
+			return nil, err
+		}
+	}
+	if len(appConfigJSON) > 0 {
+		if err := json.Unmarshal(appConfigJSON, &item.AppConfigSnapshot); err != nil {
+			return nil, err
+		}
+	}
+	if len(workloadConfigJSON) > 0 {
+		if err := json.Unmarshal(workloadConfigJSON, &item.WorkloadConfigSnapshot); err != nil {
+			return nil, err
+		}
+	}
+	if len(renderedObjectsJSON) > 0 {
+		if err := json.Unmarshal(renderedObjectsJSON, &item.RenderedObjects); err != nil {
+			return nil, err
+		}
+	}
+	if deletedAt.Valid {
+		item.DeletedAt = &deletedAt.Time
+	}
+	return &item, nil
+}
+
 func scanIntent(scanner interface {
 	Scan(dest ...any) error
 }) (*model.Intent, error) {
