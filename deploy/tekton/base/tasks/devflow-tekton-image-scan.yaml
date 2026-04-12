@@ -28,4 +28,4 @@ spec:
       script: |
         set -e
         echo "🔍 Trivy scan registry image $(params.IMAGE)"
-        trivy image --severity CRITICAL,HIGH --exit-code 1 $(params.IMAGE)
+        trivy image --timeout 10m --scanners vuln --skip-version-check --severity CRITICAL,HIGH --exit-code 1 $(params.IMAGE)

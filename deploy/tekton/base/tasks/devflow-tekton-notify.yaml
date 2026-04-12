@@ -12,6 +12,6 @@ spec:
       type: string
   steps:
     - name: echo
-      image: alpine:3.22
+      image: registry.cn-hangzhou.aliyuncs.com/devflow/ubuntu:v1
       script: |
         echo "$(params.message)"

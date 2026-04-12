@@ -23,6 +23,8 @@ FROM alpine:3.22
 
 WORKDIR /app
 
+RUN apk upgrade --no-cache libcrypto3 libssl3
+
 COPY --from=builder /app/devflow-release-service ./devflow-release-service
 COPY --from=builder /app/docs ./docs
 
