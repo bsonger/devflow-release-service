@@ -63,6 +63,13 @@ spec:
         chmod 600 "${SSH_DIR}/id_rsa"
         ssh-keyscan github.com > "${SSH_DIR}/known_hosts"
 
+        if [ ! -f "${SRC}/$(params.DOCKERFILE)" ]; then
+          echo "ERROR: missing dockerfile ${SRC}/$(params.DOCKERFILE)"
+          echo "Available Dockerfile candidates:"
+          find "${SRC}" -maxdepth 2 \( -name 'Dockerfile' -o -name 'Dockerfile.*' -o -name '*.dockerfile' \) | sort
+          exit 1
+        fi
+
         echo "🔧 Build image ${IMAGE}"
         buildah bud -f ${SRC}/$(params.DOCKERFILE) -t ${IMAGE} ${SRC}
 
