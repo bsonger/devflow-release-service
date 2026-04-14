@@ -21,12 +21,13 @@ The service layer is the domain center:
 - build/release command rules
 - public control-plane state semantics
 - coordination with Tekton / Argo / Kubernetes adapters
-- resolution of app/config metadata into release-owned snapshots and references
+- resolution of app/config metadata into release-owned snapshots, OCI artifacts, and references
 
 The target relational resource model is:
 
 - `Image` = build artifact + frozen repository/service snapshot
-- `Manifest` = frozen deployment YAML snapshot built from image + service + route + app config + workload config
+- `Manifest` = frozen deployment YAML snapshot + OCI deployment artifact built from image + service + route + app config + workload config
+- rendered Deployments are release-owned output and normalize runtime mounts such as image pull secrets plus `/etc/devflow/config/config.yaml` ConfigMap mounting
 - `Release` = deploy command + manifest reference + rollout state
 - `Intent` = long-running execution tracking record
 

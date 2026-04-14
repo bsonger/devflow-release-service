@@ -8,12 +8,19 @@ import (
 	argoapi "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned"
 	"github.com/bsonger/devflow-service-common/loggingx"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
 var Client *argoapi.Clientset
 
 const namespace = "argocd"
+
+type applicationAPI interface {
+	Create(ctx context.Context, app *appv1.Application, opts metav1.CreateOptions) (*appv1.Application, error)
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*appv1.Application, error)
+	Update(ctx context.Context, app *appv1.Application, opts metav1.UpdateOptions) (*appv1.Application, error)
+}
 
 func Init(config *rest.Config) error {
 	var err error
@@ -31,10 +38,16 @@ func CreateApplication(ctx context.Context, app *appv1.Application) error {
 }
 
 func UpdateApplication(ctx context.Context, app *appv1.Application) error {
-	applications := Client.ArgoprojV1alpha1().Applications(namespace)
+	return applyApplication(ctx, Client.ArgoprojV1alpha1().Applications(namespace), app)
+}
 
+func applyApplication(ctx context.Context, applications applicationAPI, app *appv1.Application) error {
 	current, err := applications.Get(ctx, app.Name, metav1.GetOptions{})
 	if err != nil {
+		if apierrors.IsNotFound(err) {
+			_, err = applications.Create(ctx, app, metav1.CreateOptions{})
+			return err
+		}
 		return err
 	}
 

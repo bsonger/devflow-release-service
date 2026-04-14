@@ -27,13 +27,13 @@ func TestImageContract(t *testing.T) {
 
 func TestReleaseContract(t *testing.T) {
 	typ := reflect.TypeOf(Release{})
-	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ImageID", "Env", "Type", "Status"} {
+	for _, field := range []string{"ExecutionIntentID", "ApplicationID", "ManifestID", "ImageID", "Env", "Type", "Status"} {
 		f, ok := typ.FieldByName(field)
 		if !ok {
 			t.Fatalf("Release missing field %s", field)
 		}
-		if field == "ImageID" && f.Type != reflect.TypeOf(uuid.UUID{}) {
-			t.Fatalf("Release.ImageID type = %v, want uuid.UUID", f.Type)
+		if (field == "ImageID" || field == "ManifestID") && f.Type != reflect.TypeOf(uuid.UUID{}) {
+			t.Fatalf("Release.%s type = %v, want uuid.UUID", field, f.Type)
 		}
 	}
 }
@@ -45,6 +45,12 @@ func TestManifestContract(t *testing.T) {
 		"EnvironmentID",
 		"ImageID",
 		"ImageRef",
+		"ArtifactRepository",
+		"ArtifactTag",
+		"ArtifactRef",
+		"ArtifactDigest",
+		"ArtifactMediaType",
+		"ArtifactPushedAt",
 		"ServicesSnapshot",
 		"RoutesSnapshot",
 		"AppConfigSnapshot",

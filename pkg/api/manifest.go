@@ -88,12 +88,7 @@ func (h *ManifestHandler) List(c *gin.Context) {
 		filter.ApplicationID = &id
 	}
 	if value := c.Query("environment_id"); value != "" {
-		id, err := uuid.Parse(value)
-		if err != nil {
-			httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid environment_id", nil)
-			return
-		}
-		filter.EnvironmentID = &id
+		filter.EnvironmentID = &value
 	}
 	if value := c.Query("image_id"); value != "" {
 		id, err := uuid.Parse(value)

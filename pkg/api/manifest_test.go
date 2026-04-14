@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
 	"github.com/gin-gonic/gin"
@@ -37,7 +38,8 @@ func TestCreateManifestReturnsCreated(t *testing.T) {
 	handler := &ManifestHandler{
 		svc: stubManifestService{
 			createFn: func(_ context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
-				item := &model.Manifest{ApplicationID: req.ApplicationID, EnvironmentID: req.EnvironmentID, ImageID: req.ImageID, ImageRef: "repo/demo@sha256:abc", RenderedYAML: "apiVersion: v1", Status: model.ManifestReady}
+				now := mustTime("2026-04-12T11:30:00Z")
+				item := &model.Manifest{ApplicationID: req.ApplicationID, EnvironmentID: req.EnvironmentID, ImageID: req.ImageID, ImageRef: "repo/demo@sha256:abc", ArtifactRepository: "repo/manifests/demo", ArtifactTag: "manifest-tag", ArtifactRef: "repo/manifests/demo:manifest-tag", ArtifactDigest: "sha256:def", ArtifactMediaType: "application/vnd.oci.image.manifest.v1+json", ArtifactPushedAt: &now, RenderedYAML: "apiVersion: v1", Status: model.ManifestReady}
 				item.WithCreateDefault()
 				return item, nil
 			},
@@ -58,9 +60,65 @@ func TestCreateManifestReturnsCreated(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if payload.Data.ImageRef == "" || payload.Data.RenderedYAML == "" {
+	if payload.Data.ImageRef == "" || payload.Data.RenderedYAML == "" || payload.Data.ArtifactRef == "" || payload.Data.ArtifactDigest == "" {
 		t.Fatalf("unexpected payload %+v", payload.Data)
 	}
+}
+
+func TestCreateManifestAcceptsNamedEnvironmentID(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			createFn: func(_ context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
+				if req.EnvironmentID != "staging" {
+					t.Fatalf("EnvironmentID = %q, want staging", req.EnvironmentID)
+				}
+				now := mustTime("2026-04-13T15:00:00Z")
+				item := &model.Manifest{
+					ApplicationID:      req.ApplicationID,
+					EnvironmentID:      req.EnvironmentID,
+					ImageID:            req.ImageID,
+					ImageRef:           "repo/demo@sha256:abc",
+					ArtifactRepository: "repo/manifests/demo/staging",
+					ArtifactTag:        "demo-20260413-150000",
+					ArtifactRef:        "repo/manifests/demo/staging:demo-20260413-150000",
+					ArtifactDigest:     "sha256:def",
+					ArtifactMediaType:  "application/vnd.oci.image.manifest.v1+json",
+					ArtifactPushedAt:   &now,
+					RenderedYAML:       "apiVersion: v1",
+					Status:             model.ManifestReady,
+				}
+				item.WithCreateDefault()
+				return item, nil
+			},
+		},
+	}
+	r := gin.New()
+	r.POST("/api/v1/manifests", handler.Create)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/manifests", bytes.NewBufferString(`{"application_id":"11111111-1111-1111-1111-111111111111","environment_id":"staging","image_id":"33333333-3333-3333-3333-333333333333"}`))
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("got %d want %d body=%s", rec.Code, http.StatusCreated, rec.Body.String())
+	}
+	var payload struct {
+		Data model.Manifest `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if payload.Data.EnvironmentID != "staging" {
+		t.Fatalf("EnvironmentID = %q, want staging", payload.Data.EnvironmentID)
+	}
+}
+
+func mustTime(value string) time.Time {
+	got, err := time.Parse(time.RFC3339, value)
+	if err != nil {
+		panic(err)
+	}
+	return got
 }
 
 func TestGetManifestNotFound(t *testing.T) {

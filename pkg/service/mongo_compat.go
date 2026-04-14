@@ -92,6 +92,7 @@ func scanRelease(scanner interface {
 		&item.ID,
 		&executionIntent,
 		&item.ApplicationID,
+		&item.ManifestID,
 		&item.ImageID,
 		&item.Env,
 		&item.Type,
@@ -126,6 +127,7 @@ func scanManifest(scanner interface {
 }) (*model.Manifest, error) {
 	var (
 		item                model.Manifest
+		artifactPushedAt    sql.NullTime
 		servicesJSON        []byte
 		routesJSON          []byte
 		appConfigJSON       []byte
@@ -139,6 +141,12 @@ func scanManifest(scanner interface {
 		&item.EnvironmentID,
 		&item.ImageID,
 		&item.ImageRef,
+		&item.ArtifactRepository,
+		&item.ArtifactTag,
+		&item.ArtifactRef,
+		&item.ArtifactDigest,
+		&item.ArtifactMediaType,
+		&artifactPushedAt,
 		&servicesJSON,
 		&routesJSON,
 		&appConfigJSON,
@@ -176,6 +184,9 @@ func scanManifest(scanner interface {
 		if err := json.Unmarshal(renderedObjectsJSON, &item.RenderedObjects); err != nil {
 			return nil, err
 		}
+	}
+	if artifactPushedAt.Valid {
+		item.ArtifactPushedAt = &artifactPushedAt.Time
 	}
 	if deletedAt.Valid {
 		item.DeletedAt = &deletedAt.Time

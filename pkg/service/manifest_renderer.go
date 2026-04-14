@@ -102,23 +102,25 @@ func renderManifestObjects(namespace, applicationName, configMapName string, app
 		httpRoutes = append(httpRoutes, httpRoute)
 	}
 	hosts := uniqueHosts(routes)
-	virtualServiceObj := map[string]any{
-		"apiVersion": "networking.istio.io/v1beta1",
-		"kind":       "VirtualService",
-		"metadata": map[string]any{
-			"name":      applicationName,
-			"namespace": namespace,
-		},
-		"spec": map[string]any{
-			"hosts": hosts,
-			"http":  httpRoutes,
-		},
+	if len(hosts) > 0 && len(httpRoutes) > 0 {
+		virtualServiceObj := map[string]any{
+			"apiVersion": "networking.istio.io/v1beta1",
+			"kind":       "VirtualService",
+			"metadata": map[string]any{
+				"name":      applicationName,
+				"namespace": namespace,
+			},
+			"spec": map[string]any{
+				"hosts": hosts,
+				"http":  httpRoutes,
+			},
+		}
+		item, err = marshalRenderedObject("VirtualService", applicationName, namespace, virtualServiceObj)
+		if err != nil {
+			return nil, err
+		}
+		objects = append(objects, item)
 	}
-	item, err = marshalRenderedObject("VirtualService", applicationName, namespace, virtualServiceObj)
-	if err != nil {
-		return nil, err
-	}
-	objects = append(objects, item)
 
 	env := make([]map[string]any, 0, len(workload.Env))
 	for _, entry := range workload.Env {
@@ -128,6 +130,7 @@ func renderManifestObjects(namespace, applicationName, configMapName string, app
 	for k, v := range annotations {
 		templateAnnotations[k] = v
 	}
+	deploymentConfigName := workloadConfigResourceName(applicationName)
 	deploymentObj := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
@@ -150,12 +153,25 @@ func renderManifestObjects(namespace, applicationName, configMapName string, app
 					"annotations": templateAnnotations,
 				},
 				"spec": map[string]any{
+					"imagePullSecrets": []map[string]any{{"name": "aliyun-docker-config"}},
 					"containers": []map[string]any{{
 						"name":      applicationName,
 						"image":     imageRef,
 						"env":       env,
 						"envFrom":   []map[string]any{{"configMapRef": map[string]any{"name": configMapName}}},
 						"resources": workload.Resources,
+						"volumeMounts": []map[string]any{{
+							"name":      "config",
+							"mountPath": "/etc/devflow/config/config.yaml",
+							"subPath":   "config.yaml",
+							"readOnly":  true,
+						}},
+					}},
+					"volumes": []map[string]any{{
+						"name": "config",
+						"configMap": map[string]any{
+							"name": deploymentConfigName,
+						},
 					}},
 				},
 			},
@@ -186,6 +202,15 @@ func marshalRenderedObject(kind, name, namespace string, object any) (model.Mani
 		Namespace: namespace,
 		YAML:      string(body),
 	}, nil
+}
+
+func workloadConfigResourceName(applicationName string) string {
+	trimmed := strings.TrimSpace(applicationName)
+	trimmed = strings.TrimPrefix(trimmed, "devflow-")
+	if trimmed == "" {
+		trimmed = applicationName
+	}
+	return trimmed + "-config"
 }
 
 func uniqueHosts(routes []model.ManifestRoute) []string {

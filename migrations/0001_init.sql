@@ -59,6 +59,7 @@ CREATE TABLE IF NOT EXISTS releases (
   id UUID PRIMARY KEY,
   execution_intent_id UUID NULL,
   application_id UUID NOT NULL,
+  manifest_id UUID NOT NULL,
   image_id UUID NOT NULL,
   env TEXT NOT NULL,
   type TEXT NOT NULL,
@@ -72,6 +73,9 @@ CREATE TABLE IF NOT EXISTS releases (
 
 CREATE INDEX IF NOT EXISTS idx_releases_image_id
   ON releases (image_id);
+
+CREATE INDEX IF NOT EXISTS idx_releases_manifest_id
+  ON releases (manifest_id);
 
 CREATE INDEX IF NOT EXISTS idx_releases_application_id
   ON releases (application_id);

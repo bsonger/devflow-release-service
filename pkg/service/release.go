@@ -26,8 +26,15 @@ var ReleaseService = &releaseService{}
 var (
 	ErrImageMissingRuntimeSpecRevision                         = errors.New("image runtime_spec_revision_id is required")
 	ErrRuntimeSpecBindingMismatch                              = errors.New("image runtime_spec_revision_id does not match release application and env")
+	ErrReleaseManifestNotReady                                = errors.New("manifest is not ready")
 	runtimeLookupClient                   runtimeclient.Lookup = runtimeclient.New("")
 )
+
+type releaseManifestReader interface {
+	Get(context.Context, uuid.UUID) (*model.Manifest, error)
+}
+
+var releaseManifestSource releaseManifestReader = ManifestService
 
 type releaseService struct{}
 
@@ -51,6 +58,9 @@ func populateReleaseDefaults(release *model.Release, image *model.Image, env str
 
 func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release *model.Release, image *model.Image) (string, error) {
 	if image.RuntimeSpecRevisionID == nil || *image.RuntimeSpecRevisionID == uuid.Nil {
+		if strings.TrimSpace(release.Env) != "" {
+			return strings.TrimSpace(release.Env), nil
+		}
 		return "", ErrImageMissingRuntimeSpecRevision
 	}
 	revision, err := runtimeLookupClient.GetRuntimeSpecRevision(ctx, *image.RuntimeSpecRevisionID)
@@ -71,7 +81,24 @@ func (s *releaseService) resolveReleaseEnvironment(ctx context.Context, release 
 }
 
 func (s *releaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
-	log := loggingx.LoggerWithContext(ctx).With(zap.String("release.type", release.Type), zap.String("image.id", release.ImageID.String()))
+	log := loggingx.LoggerWithContext(ctx)
+	if log == nil {
+		log = zap.NewNop()
+	}
+	log = log.With(zap.String("release.type", release.Type), zap.String("manifest.id", release.ManifestID.String()))
+
+	manifest, err := releaseManifestSource.Get(ctx, release.ManifestID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if manifest.Status != model.ManifestReady {
+		return uuid.Nil, ErrReleaseManifestNotReady
+	}
+	release.ApplicationID = manifest.ApplicationID
+	release.ImageID = manifest.ImageID
+	if strings.TrimSpace(release.Env) == "" {
+		release.Env = strings.TrimSpace(manifest.EnvironmentID)
+	}
 
 	image, err := ImageService.Get(ctx, release.ImageID)
 	if err != nil {
@@ -113,9 +140,9 @@ func (s *releaseService) insert(ctx context.Context, release *model.Release) err
 	}
 	_, err = store.DB().ExecContext(ctx, `
 		insert into releases (
-			id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
-		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
+			id, execution_intent_id, application_id, manifest_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		) values ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.CreatedAt, release.UpdatedAt, release.DeletedAt)
 	return err
 }
 
@@ -139,7 +166,7 @@ func (s *releaseService) handleSyncArgoError(ctx context.Context, release *model
 
 func (s *releaseService) Get(ctx context.Context, id uuid.UUID) (*model.Release, error) {
 	return scanRelease(store.DB().QueryRowContext(ctx, `
-		select id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, manifest_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 		where id = $1 and deleted_at is null
 	`, id))
@@ -170,7 +197,7 @@ func (s *releaseService) Delete(ctx context.Context, id uuid.UUID) error {
 
 func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]*model.Release, error) {
 	query := `
-		select id, execution_intent_id, application_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
+		select id, execution_intent_id, application_id, manifest_id, image_id, env, type, steps, status, external_ref, created_at, updated_at, deleted_at
 		from releases
 	`
 	clauses := make([]string, 0, 5)
@@ -181,6 +208,10 @@ func (s *releaseService) List(ctx context.Context, filter ReleaseListFilter) ([]
 	if filter.ApplicationID != nil {
 		args = append(args, *filter.ApplicationID)
 		clauses = append(clauses, placeholderClause("application_id", len(args)))
+	}
+	if filter.ManifestID != nil {
+		args = append(args, *filter.ManifestID)
+		clauses = append(clauses, placeholderClause("manifest_id", len(args)))
 	}
 	if filter.ImageID != nil {
 		args = append(args, *filter.ImageID)
@@ -327,38 +358,12 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 	if err != nil {
 		return err
 	}
-	manifestRepo := model.GetConfigRepo()
-	imageID := release.ImageID.String()
-	releaseID := release.ID.String()
-	name := app.Name
-	if name == "" {
-		name = release.ApplicationID.String()
-	}
-	namespace := app.ProjectName
-	if namespace == "" {
-		namespace = "default"
+	manifest, err := releaseManifestSource.Get(ctx, release.ManifestID)
+	if err != nil {
+		return err
 	}
 
-	application := &appv1.Application{
-		TypeMeta:   metav1.TypeMeta{Kind: "Application", APIVersion: "argoproj.io/v1alpha1"},
-		ObjectMeta: metav1.ObjectMeta{Name: name},
-		Spec: appv1.ApplicationSpec{
-			Project: "app",
-			Source: &appv1.ApplicationSource{
-				RepoURL: manifestRepo.Address,
-				Path:    "./",
-				Plugin: &appv1.ApplicationSourcePlugin{
-					Name: "plugin",
-					Parameters: []appv1.ApplicationSourcePluginParameter{
-						{Name: "env", String_: &release.Env},
-						{Name: "image-id", String_: &imageID},
-						{Name: "release-id", String_: &releaseID},
-					},
-				},
-			},
-			Destination: appv1.ApplicationDestination{Server: "https://kubernetes.default.svc", Namespace: namespace},
-		},
-	}
+	application := buildArgoApplication(release, manifest, app)
 	sc := trace.SpanContextFromContext(ctx)
 	application.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
@@ -366,22 +371,90 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 	}
 	application.Labels = map[string]string{"status": string(model.ReleaseRunning), model.ReleaseIDLabel: release.ID.String()}
 
-	switch release.Type {
-	case model.ReleaseInstall:
-		err = argoclient.CreateApplication(ctx, application)
-		if err == nil {
-			err = s.syncArgoApplication(ctx, application.Name)
-		}
-	case model.ReleaseUpgrade, model.ReleaseRollback:
-		err = argoclient.UpdateApplication(ctx, application)
-	default:
-		err = errors.New("unknown release type")
-	}
+	err = applyReleaseApplication(ctx, release.Type, application, argoclient.CreateApplication, argoclient.UpdateApplication, s.syncArgoApplication)
 	if err != nil {
 		log.Error("argo sync failed", zap.String("release_id", release.ID.String()), zap.String("type", release.Type), zap.Error(err))
 		return err
 	}
 	return nil
+}
+
+func applyReleaseApplication(ctx context.Context, releaseType string, application *appv1.Application, createFn func(context.Context, *appv1.Application) error, updateFn func(context.Context, *appv1.Application) error, syncFn func(context.Context, string) error) error {
+	switch releaseType {
+	case model.ReleaseInstall:
+		if err := createFn(ctx, application); err != nil {
+			return err
+		}
+	case model.ReleaseUpgrade, model.ReleaseRollback:
+		if err := updateFn(ctx, application); err != nil {
+			return err
+		}
+	default:
+		return errors.New("unknown release type")
+	}
+	return syncFn(ctx, application.Name)
+}
+
+func buildArgoApplication(release *model.Release, manifest *model.Manifest, app *applicationProjection) *appv1.Application {
+	name := app.Name
+	if name == "" {
+		name = release.ApplicationID.String()
+	}
+	namespace := namespaceForEnvironment(strings.TrimSpace(release.Env))
+	if manifest != nil && strings.TrimSpace(manifest.EnvironmentID) != "" {
+		namespace = namespaceForEnvironment(strings.TrimSpace(manifest.EnvironmentID))
+	}
+	source := buildOCIApplicationSource(manifest)
+	if source == nil {
+		source = buildRepoPluginApplicationSource(release)
+	}
+	return &appv1.Application{
+		TypeMeta:   metav1.TypeMeta{Kind: "Application", APIVersion: "argoproj.io/v1alpha1"},
+		ObjectMeta: metav1.ObjectMeta{Name: name},
+		Spec: appv1.ApplicationSpec{
+			Project:     "app",
+			Source:      source,
+			Destination: appv1.ApplicationDestination{Server: "https://kubernetes.default.svc", Namespace: namespace},
+		},
+	}
+}
+
+func buildOCIApplicationSource(manifest *model.Manifest) *appv1.ApplicationSource {
+	if manifest == nil || strings.TrimSpace(manifest.ArtifactRepository) == "" {
+		return nil
+	}
+	revision := strings.TrimSpace(manifest.ArtifactDigest)
+	if revision == "" {
+		revision = strings.TrimSpace(manifest.ArtifactTag)
+	}
+	if revision == "" {
+		return nil
+	}
+	return &appv1.ApplicationSource{
+		RepoURL:        "oci://" + strings.TrimSpace(manifest.ArtifactRepository),
+		TargetRevision: revision,
+		Path:           ".",
+	}
+}
+
+func buildRepoPluginApplicationSource(release *model.Release) *appv1.ApplicationSource {
+	manifestRepo := model.GetConfigRepo()
+	imageID := release.ImageID.String()
+	manifestID := release.ManifestID.String()
+	releaseID := release.ID.String()
+	return &appv1.ApplicationSource{
+		RepoURL: manifestRepo.Address,
+		Path:    "./",
+		Plugin: &appv1.ApplicationSourcePlugin{
+			Name: "plugin",
+			Parameters: []appv1.ApplicationSourcePluginParameter{
+				{Name: "env", String_: &release.Env},
+				{Name: "manifest-id", String_: &manifestID},
+				{Name: "image-id", String_: &imageID},
+				{Name: "release-id", String_: &releaseID},
+			},
+		},
+	}
 }
 
 func (s *releaseService) syncArgoApplication(ctx context.Context, appName string) error {
@@ -397,9 +470,9 @@ func (s *releaseService) updateRow(ctx context.Context, release *model.Release) 
 	}
 	result, err := store.DB().ExecContext(ctx, `
 		update releases
-		set execution_intent_id=$2, application_id=$3, image_id=$4, env=$5, type=$6, steps=$7, status=$8, external_ref=$9, updated_at=$10, deleted_at=$11
+		set execution_intent_id=$2, application_id=$3, manifest_id=$4, image_id=$5, env=$6, type=$7, steps=$8, status=$9, external_ref=$10, updated_at=$11, deleted_at=$12
 		where id = $1
-	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
+	`, release.ID, nullableUUIDPtr(release.ExecutionIntentID), release.ApplicationID, release.ManifestID, release.ImageID, release.Env, release.Type, stepsJSON, release.Status, release.ExternalRef, release.UpdatedAt, release.DeletedAt)
 	if err != nil {
 		return err
 	}

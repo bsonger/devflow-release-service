@@ -362,7 +362,7 @@ const docTemplate = `{
                 "env": {
                     "type": "string"
                 },
-                "image_id": {
+                "manifest_id": {
                     "type": "string"
                 },
                 "type": {
@@ -478,6 +478,24 @@ const docTemplate = `{
                     "$ref": "#/definitions/pkg_api.ManifestAppConfigDoc"
                 },
                 "application_id": {
+                    "type": "string"
+                },
+                "artifact_digest": {
+                    "type": "string"
+                },
+                "artifact_media_type": {
+                    "type": "string"
+                },
+                "artifact_pushed_at": {
+                    "type": "string"
+                },
+                "artifact_ref": {
+                    "type": "string"
+                },
+                "artifact_repository": {
+                    "type": "string"
+                },
+                "artifact_tag": {
                     "type": "string"
                 },
                 "created_at": {
@@ -701,6 +719,9 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "image_id": {
+                    "type": "string"
+                },
+                "manifest_id": {
                     "type": "string"
                 },
                 "status": {

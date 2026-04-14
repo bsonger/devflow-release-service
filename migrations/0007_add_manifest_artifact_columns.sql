@@ -1,0 +1,17 @@
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_repository TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_tag TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_ref TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_digest TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_media_type TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE manifests
+  ADD COLUMN IF NOT EXISTS artifact_pushed_at TIMESTAMPTZ NULL;

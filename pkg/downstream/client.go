@@ -2,9 +2,11 @@ package downstream
 
 import (
 	"context"
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strings"
 	"time"
@@ -40,11 +42,17 @@ func (c *Client) getEnvelopeData(ctx context.Context, path string, out any) erro
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("downstream request failed: %s", resp.Status)
 	}
-	var envelope struct {
-		Data json.RawMessage `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&envelope); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		return err
 	}
-	return json.Unmarshal(envelope.Data, out)
+	var envelope map[string]json.RawMessage
+	if err := json.NewDecoder(bytes.NewReader(body)).Decode(&envelope); err != nil {
+		return err
+	}
+	data, ok := envelope["data"]
+	if !ok {
+		return json.Unmarshal(body, out)
+	}
+	return json.Unmarshal(data, out)
 }

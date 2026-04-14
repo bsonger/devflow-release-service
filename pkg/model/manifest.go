@@ -1,6 +1,8 @@
 package model
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -8,9 +10,15 @@ type Manifest struct {
 	BaseModel
 
 	ApplicationID          uuid.UUID                `json:"application_id" db:"application_id"`
-	EnvironmentID          uuid.UUID                `json:"environment_id" db:"environment_id"`
+	EnvironmentID          string                   `json:"environment_id" db:"environment_id"`
 	ImageID                uuid.UUID                `json:"image_id" db:"image_id"`
 	ImageRef               string                   `json:"image_ref" db:"image_ref"`
+	ArtifactRepository     string                   `json:"artifact_repository" db:"artifact_repository"`
+	ArtifactTag            string                   `json:"artifact_tag" db:"artifact_tag"`
+	ArtifactRef            string                   `json:"artifact_ref" db:"artifact_ref"`
+	ArtifactDigest         string                   `json:"artifact_digest" db:"artifact_digest"`
+	ArtifactMediaType      string                   `json:"artifact_media_type" db:"artifact_media_type"`
+	ArtifactPushedAt       *time.Time               `json:"artifact_pushed_at,omitempty" db:"artifact_pushed_at"`
 	ServicesSnapshot       []ManifestService        `json:"services_snapshot" db:"services_snapshot"`
 	RoutesSnapshot         []ManifestRoute          `json:"routes_snapshot" db:"routes_snapshot"`
 	AppConfigSnapshot      ManifestAppConfig        `json:"app_config_snapshot" db:"app_config_snapshot"`
@@ -22,13 +30,13 @@ type Manifest struct {
 
 type CreateManifestRequest struct {
 	ApplicationID uuid.UUID `json:"application_id"`
-	EnvironmentID uuid.UUID `json:"environment_id"`
+	EnvironmentID string    `json:"environment_id"`
 	ImageID       uuid.UUID `json:"image_id"`
 }
 
 type ManifestListFilter struct {
 	ApplicationID  *uuid.UUID
-	EnvironmentID  *uuid.UUID
+	EnvironmentID  *string
 	ImageID        *uuid.UUID
 	IncludeDeleted bool
 }

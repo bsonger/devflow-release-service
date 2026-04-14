@@ -22,13 +22,46 @@ The rendered result is the deployment bundle that release execution should consu
 
 `POST /api/v1/manifests` accepts:
 - `application_id`
-- `environment_id`
+- `environment_id` such as `staging` or `base`
 - `image_id`
 
 The service resolves the effective owner resources, validates route targets, chooses the image reference with `digest` first and `tag` second, and persists:
+- rendered workload Deployment now includes `imagePullSecrets: [aliyun-docker-config]`
+- rendered workload Deployment mounts `/etc/devflow/config/config.yaml` from the environment-level `*-config` ConfigMap
 - source snapshots
 - rendered objects
 - rendered multi-document YAML
+- OCI artifact publication metadata when registry publishing is enabled
+
+Manifest creation does **not** look up or persist `runtime_spec_revision_id`.
+Runtime binding is validated later during release creation from `Image.runtime_spec_revision_id`.
+
+Environment resolution rules:
+- `environment_id` is the platform environment key, not a UUID
+- app-level `Service` / `Route` resources are treated as the shared base
+- `AppConfig` / `WorkloadConfig` first try the target environment
+- if the target environment has no matching config entry, release-service falls back to the application base entry
+
+## OCI packaging
+
+When manifest registry publishing is enabled, manifest creation also:
+- packages deployable `manifest.yaml` into a single OCI tar+gzip layer; manifest metadata stays in the OCI config payload
+- pushes the frozen bundle as an OCI artifact owned by `release-service`
+- tags the OCI artifact as `service-name-YYYYMMDD-HHMMSS`
+- records:
+  - `artifact_repository`
+  - `artifact_tag`
+  - `artifact_ref`
+  - `artifact_digest`
+  - `artifact_media_type`
+  - `artifact_pushed_at`
+
+Registry config resolution order:
+- `MANIFEST_REGISTRY`
+- `MANIFEST_REGISTRY_NAMESPACE`
+- optional `MANIFEST_REGISTRY_REPOSITORY` with default `manifests`
+- optional `MANIFEST_REGISTRY_PLAIN_HTTP=true` for in-cluster HTTP registries
+- fallback to `IMAGE_REGISTRY`, `IMAGE_REGISTRY_NAMESPACE`, `IMAGE_REGISTRY_USERNAME`, `IMAGE_REGISTRY_PASSWORD`
 
 ## Returned shape
 
@@ -36,6 +69,7 @@ Manifest detail includes:
 - source snapshot fields
 - `rendered_objects`
 - `rendered_yaml`
+- OCI artifact metadata fields when available
 - `status`
 
 List responses return manifest metadata only.

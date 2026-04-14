@@ -51,15 +51,10 @@ func NewConfigManifestClient(baseURL string) *ConfigManifestClient {
 }
 
 func (c *ConfigManifestClient) FindAppConfig(ctx context.Context, applicationID, environmentID string) (*AppConfig, error) {
-	path := fmt.Sprintf("/api/v1/app-configs?application_id=%s&environment_id=%s", url.QueryEscape(applicationID), url.QueryEscape(environmentID))
-	var items []AppConfig
-	if err := c.getEnvelopeData(ctx, path, &items); err != nil {
+	item, err := c.findAppConfigMetadata(ctx, applicationID, environmentID)
+	if err != nil {
 		return nil, err
 	}
-	if len(items) == 0 {
-		return nil, nil
-	}
-	item := items[0]
 	if item.ID == "" {
 		return nil, nil
 	}
@@ -93,19 +88,34 @@ func (c *ConfigManifestClient) GetAppConfig(ctx context.Context, id string) (*Ap
 }
 
 func (c *ConfigManifestClient) FindWorkloadConfig(ctx context.Context, applicationID, environmentID string) (*WorkloadConfig, error) {
-	path := fmt.Sprintf("/api/v1/workload-configs?application_id=%s&environment_id=%s", url.QueryEscape(applicationID), url.QueryEscape(environmentID))
-	var items []WorkloadConfig
-	if err := c.getEnvelopeData(ctx, path, &items); err != nil {
+	item, err := c.findWorkloadConfigMetadata(ctx, applicationID, environmentID)
+	if err != nil {
 		return nil, err
 	}
-	if len(items) == 0 {
-		return nil, nil
-	}
-	item := items[0]
 	if item.ID == "" {
 		return nil, nil
 	}
 	return c.GetWorkloadConfig(ctx, item.ID)
+}
+
+func (c *ConfigManifestClient) findAppConfigMetadata(ctx context.Context, applicationID, environmentID string) (AppConfig, error) {
+	path := fmt.Sprintf("/api/v1/app-configs?application_id=%s&environment_id=%s", url.QueryEscape(applicationID), url.QueryEscape(environmentID))
+	var items []AppConfig
+	if err := c.getEnvelopeData(ctx, path, &items); err != nil {
+		return AppConfig{}, err
+	}
+	if len(items) > 0 {
+		item := items[0]
+		if item.ID != "" {
+			return item, nil
+		}
+	}
+	path = fmt.Sprintf("/api/v1/app-configs?application_id=%s", url.QueryEscape(applicationID))
+	var fallback []AppConfig
+	if err := c.getEnvelopeData(ctx, path, &fallback); err != nil {
+		return AppConfig{}, err
+	}
+	return selectBaseAppConfig(fallback), nil
 }
 
 func (c *ConfigManifestClient) GetWorkloadConfig(ctx context.Context, id string) (*WorkloadConfig, error) {
@@ -114,4 +124,58 @@ func (c *ConfigManifestClient) GetWorkloadConfig(ctx context.Context, id string)
 		return nil, err
 	}
 	return &item, nil
+}
+
+func (c *ConfigManifestClient) findWorkloadConfigMetadata(ctx context.Context, applicationID, environmentID string) (WorkloadConfig, error) {
+	path := fmt.Sprintf("/api/v1/workload-configs?application_id=%s&environment_id=%s", url.QueryEscape(applicationID), url.QueryEscape(environmentID))
+	var items []WorkloadConfig
+	if err := c.getEnvelopeData(ctx, path, &items); err != nil {
+		return WorkloadConfig{}, err
+	}
+	if len(items) > 0 {
+		item := items[0]
+		if item.ID != "" {
+			return item, nil
+		}
+	}
+	path = fmt.Sprintf("/api/v1/workload-configs?application_id=%s", url.QueryEscape(applicationID))
+	var fallback []WorkloadConfig
+	if err := c.getEnvelopeData(ctx, path, &fallback); err != nil {
+		return WorkloadConfig{}, err
+	}
+	return selectBaseWorkloadConfig(fallback), nil
+}
+
+func selectBaseAppConfig(items []AppConfig) AppConfig {
+	for _, item := range items {
+		if item.ID != "" && item.EnvironmentID == "base" {
+			return item
+		}
+	}
+	for _, item := range items {
+		if item.ID != "" && item.EnvironmentID == "" {
+			return item
+		}
+	}
+	if len(items) == 0 {
+		return AppConfig{}
+	}
+	return items[0]
+}
+
+func selectBaseWorkloadConfig(items []WorkloadConfig) WorkloadConfig {
+	for _, item := range items {
+		if item.ID != "" && item.EnvironmentID == "base" {
+			return item
+		}
+	}
+	for _, item := range items {
+		if item.ID != "" && item.EnvironmentID == "" {
+			return item
+		}
+	}
+	if len(items) == 0 {
+		return WorkloadConfig{}
+	}
+	return items[0]
 }

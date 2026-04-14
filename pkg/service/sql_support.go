@@ -21,6 +21,7 @@ type ImageListFilter struct {
 type ReleaseListFilter struct {
 	IncludeDeleted bool
 	ApplicationID  *uuid.UUID
+	ManifestID     *uuid.UUID
 	ImageID        *uuid.UUID
 	Status         string
 	Type           string

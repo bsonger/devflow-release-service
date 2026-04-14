@@ -32,6 +32,7 @@ type ReleaseDoc struct {
 	ID                uuid.UUID        `json:"id"`
 	ExecutionIntentID *uuid.UUID       `json:"execution_intent_id,omitempty"`
 	ApplicationID     uuid.UUID        `json:"application_id"`
+	ManifestID        uuid.UUID        `json:"manifest_id"`
 	ImageID           uuid.UUID        `json:"image_id"`
 	Env               string           `json:"env"`
 	Type              string           `json:"type"`
@@ -105,9 +106,15 @@ type ManifestRenderedObjectDoc struct {
 type ManifestDoc struct {
 	ID                     uuid.UUID                   `json:"id"`
 	ApplicationID          uuid.UUID                   `json:"application_id"`
-	EnvironmentID          uuid.UUID                   `json:"environment_id"`
+	EnvironmentID          string                      `json:"environment_id"`
 	ImageID                uuid.UUID                   `json:"image_id"`
 	ImageRef               string                      `json:"image_ref"`
+	ArtifactRepository     string                      `json:"artifact_repository,omitempty"`
+	ArtifactTag            string                      `json:"artifact_tag,omitempty"`
+	ArtifactRef            string                      `json:"artifact_ref,omitempty"`
+	ArtifactDigest         string                      `json:"artifact_digest,omitempty"`
+	ArtifactMediaType      string                      `json:"artifact_media_type,omitempty"`
+	ArtifactPushedAt       string                      `json:"artifact_pushed_at,omitempty"`
 	ServicesSnapshot       []ManifestServiceDoc        `json:"services_snapshot"`
 	RoutesSnapshot         []ManifestRouteDoc          `json:"routes_snapshot"`
 	AppConfigSnapshot      ManifestAppConfigDoc        `json:"app_config_snapshot"`

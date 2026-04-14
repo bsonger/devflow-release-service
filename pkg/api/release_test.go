@@ -38,6 +38,7 @@ func TestCreateReleaseReturnsEnvelope(t *testing.T) {
 		svc: stubReleaseService{
 			createFn: func(_ context.Context, release *model.Release) (uuid.UUID, error) {
 				release.WithCreateDefault()
+				release.ManifestID = uuid.MustParse("33333333-3333-3333-3333-333333333333")
 				release.ApplicationID = uuid.MustParse("11111111-1111-1111-1111-111111111111")
 				release.Status = model.ReleasePending
 				return release.GetID(), nil
@@ -48,7 +49,7 @@ func TestCreateReleaseReturnsEnvelope(t *testing.T) {
 	r := gin.New()
 	r.POST("/api/v1/releases", handler.Create)
 
-	body := bytes.NewBufferString(`{"image_id":"22222222-2222-2222-2222-222222222222","env":"prod","type":"upgrade"}`)
+	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222","env":"prod","type":"upgrade"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
@@ -64,7 +65,7 @@ func TestCreateReleaseReturnsEnvelope(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("unmarshal body: %v", err)
 	}
-	if payload.Data.ImageID == uuid.Nil || payload.Data.Env != "prod" {
+	if payload.Data.ManifestID == uuid.Nil || payload.Data.Env != "prod" {
 		t.Fatalf("unexpected payload: %#v", payload.Data)
 	}
 }
@@ -82,7 +83,7 @@ func TestCreateReleaseFailedPreconditionReturnsErrorEnvelope(t *testing.T) {
 	r := gin.New()
 	r.POST("/api/v1/releases", handler.Create)
 
-	body := bytes.NewBufferString(`{"image_id":"22222222-2222-2222-2222-222222222222"}`)
+	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
 	req.Header.Set("Content-Type", "application/json")
 	rec := httptest.NewRecorder()
