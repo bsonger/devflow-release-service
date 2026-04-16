@@ -2,7 +2,7 @@
 
 `devflow-release-service` is the backend owner for `Manifest`, `Image`, `Release`, and `Intent`.
 
-## Backend Role
+## Role
 
 - own build/release control-plane resources
 - persist frozen manifest snapshots before release execution
@@ -24,7 +24,7 @@ Build-image Tekton resources now live in this repository:
 
 Naming is normalized with the `devflow-tekton-` prefix.
 
-## Local Run
+## Key Commands
 
 - `go run ./cmd`
 - `go build ./cmd/main.go`
@@ -34,8 +34,11 @@ Naming is normalized with the `devflow-tekton-` prefix.
 
 ## Key Docs
 
+- `docs/README.md`
+- `scripts/README.md`
 - `docs/architecture.md`
-- `docs/api-spec.md`
 - `docs/constraints.md`
+- `docs/observability.md`
+- `docs/api-spec.md`
 - `docs/resources/README.md`
 - `docs/generated/swagger/swagger.yaml`

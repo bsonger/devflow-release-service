@@ -6,7 +6,7 @@
 It receives build/release commands, stores lifecycle records, and coordinates execution-side adapters without giving up ownership semantics.
 It freezes build-time repository/service metadata into `Image` records, renders deployment snapshots into `Manifest` records, binds release execution to frozen manifests, accepts watcher-driven Tekton task/status writeback from `devflow-resource-observer`, and in staging runs in direct execution mode so build requests immediately submit the normalized Tekton pipeline `devflow-tekton-image-build`.
 
-## Architecture Style
+## Architecture style
 
 This repo uses a **layered control-plane backend**:
 
@@ -31,7 +31,7 @@ The target relational resource model is:
 - `Release` = deploy command + manifest reference + rollout state
 - `Intent` = long-running execution tracking record
 
-## Request Flow
+## Request flow
 
 ### Command path
 
@@ -54,7 +54,7 @@ Client
   -> HTTP response
 ```
 
-## Internal Package Layout
+## Internal package layout
 
 - `cmd/main.go`
   - process entrypoint only
@@ -78,7 +78,7 @@ Client
 - `pkg/store`
   - persistence primitives
 
-## External Dependencies
+## External dependencies
 
 - `Gin`
 - PostgreSQL persistence
@@ -87,19 +87,16 @@ Client
 - repo-managed Tekton pipeline/task YAML under `deploy/tekton/base`
 - Argo CD / Kubernetes adapters
 
-## Non-Goals
+## Swagger generation
+
+- Run `scripts/regen-swagger.sh` to generate `docs/generated/swagger`.
+- Use `scripts/build.sh` to regenerate swagger and rebuild the binary locally.
+- Generated swagger files live under `docs/generated/swagger`; export tooling expects the bundle there and `scripts/export_service_repo.sh` copies that folder into split repos.
+
+## Non-goals
 
 - `Project` / `Application` metadata ownership
 - `Configuration` ownership
 - verify-service domain ownership and verify ingress semantics
 - platform UI aggregation ownership
 - environment-variable ownership outside configuration references
-
-## Swagger generation
-
-- Run `scripts/regen-swagger.sh` to generate `docs/generated/swagger`.
-- Use `scripts/build.sh` to regenerate swagger and rebuild the binary locally.
-- Export/release tooling expects the bundle in `docs/generated/swagger`, so keep it checked in.
-
-- Generated swagger files live under `docs/generated/swagger`; preserve them if you export the repo.
-- `scripts/export_service_repo.sh` expects the generated bundle in `docs/generated/swagger` when copying docs.
