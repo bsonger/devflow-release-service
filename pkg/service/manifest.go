@@ -12,6 +12,7 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/runtime"
 	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/google/uuid"
+	"sigs.k8s.io/yaml"
 )
 
 var (
@@ -197,6 +198,14 @@ func (s *manifestService) List(ctx context.Context, filter model.ManifestListFil
 	return out, rows.Err()
 }
 
+func (s *manifestService) GetResources(ctx context.Context, id uuid.UUID) (*model.ManifestResourcesView, error) {
+	item, err := s.Get(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	return buildManifestResourcesView(item)
+}
+
 func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
 	return scanManifest(store.DB().QueryRowContext(ctx, `
 		select id, application_id, environment_id, image_id, image_ref,
@@ -206,6 +215,57 @@ func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifes
 		from manifests
 		where id = $1 and deleted_at is null
 	`, id))
+}
+
+func buildManifestResourcesView(item *model.Manifest) (*model.ManifestResourcesView, error) {
+	if item == nil {
+		return nil, nil
+	}
+	view := &model.ManifestResourcesView{
+		ManifestID:      item.ID,
+		ApplicationID:   item.ApplicationID,
+		EnvironmentID:   item.EnvironmentID,
+		Resources:       model.ManifestGroupedResources{Services: []model.ManifestRenderedResource{}},
+		RenderedObjects: make([]model.ManifestRenderedResource, 0, len(item.RenderedObjects)),
+	}
+	for _, rendered := range item.RenderedObjects {
+		decoded, err := decodeManifestRenderedResource(rendered)
+		if err != nil {
+			return nil, err
+		}
+		view.RenderedObjects = append(view.RenderedObjects, decoded)
+		switch strings.ToLower(strings.TrimSpace(rendered.Kind)) {
+		case "configmap":
+			view.Resources.ConfigMap = &decoded
+		case "deployment":
+			view.Resources.Deployment = &decoded
+		case "rollout":
+			view.Resources.Rollout = &decoded
+		case "service":
+			view.Resources.Services = append(view.Resources.Services, decoded)
+		case "virtualservice":
+			view.Resources.VirtualService = &decoded
+		}
+	}
+	return view, nil
+}
+
+func decodeManifestRenderedResource(item model.ManifestRenderedObject) (model.ManifestRenderedResource, error) {
+	decoded := model.ManifestRenderedResource{
+		Kind:      item.Kind,
+		Name:      item.Name,
+		Namespace: item.Namespace,
+		YAML:      item.YAML,
+	}
+	if strings.TrimSpace(item.YAML) == "" {
+		return decoded, nil
+	}
+	var object map[string]any
+	if err := yaml.Unmarshal([]byte(item.YAML), &object); err != nil {
+		return model.ManifestRenderedResource{}, fmt.Errorf("decode rendered object %s/%s: %w", item.Kind, item.Name, err)
+	}
+	decoded.Object = object
+	return decoded, nil
 }
 
 func (s *manifestService) insert(ctx context.Context, m *model.Manifest) error {
@@ -308,7 +368,7 @@ func buildManifest(req *model.CreateManifestRequest, image *model.Image, applica
 	}
 
 	configMapName := applicationName + "-config"
-	renderedObjects, err := renderManifestObjects(namespace, applicationName, configMapName, appConfigSnapshot, workloadSnapshot, servicesSnapshot, routesSnapshot, imageRef, annotations)
+	renderedObjects, err := renderManifestObjects(namespace, applicationName, req.ApplicationID.String(), req.EnvironmentID, configMapName, appConfigSnapshot, workloadSnapshot, servicesSnapshot, routesSnapshot, imageRef, annotations)
 	if err != nil {
 		return nil, err
 	}

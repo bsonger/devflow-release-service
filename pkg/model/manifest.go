@@ -96,4 +96,28 @@ type ManifestRenderedObject struct {
 	YAML      string `json:"yaml"`
 }
 
+type ManifestRenderedResource struct {
+	Kind      string         `json:"kind"`
+	Name      string         `json:"name"`
+	Namespace string         `json:"namespace"`
+	YAML      string         `json:"yaml"`
+	Object    map[string]any `json:"object,omitempty"`
+}
+
+type ManifestGroupedResources struct {
+	ConfigMap      *ManifestRenderedResource  `json:"configmap,omitempty"`
+	Deployment     *ManifestRenderedResource  `json:"deployment,omitempty"`
+	Rollout        *ManifestRenderedResource  `json:"rollout,omitempty"`
+	Services       []ManifestRenderedResource `json:"services,omitempty"`
+	VirtualService *ManifestRenderedResource  `json:"virtualservice,omitempty"`
+}
+
+type ManifestResourcesView struct {
+	ManifestID      uuid.UUID                  `json:"manifest_id"`
+	ApplicationID   uuid.UUID                  `json:"application_id"`
+	EnvironmentID   string                     `json:"environment_id"`
+	Resources       ManifestGroupedResources   `json:"resources"`
+	RenderedObjects []ManifestRenderedResource `json:"rendered_objects,omitempty"`
+}
+
 func (m *Manifest) CollectionName() string { return "manifests" }

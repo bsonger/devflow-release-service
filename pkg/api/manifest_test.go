@@ -16,9 +16,10 @@ import (
 )
 
 type stubManifestService struct {
-	createFn func(context.Context, *model.CreateManifestRequest) (*model.Manifest, error)
-	listFn   func(context.Context, model.ManifestListFilter) ([]model.Manifest, error)
-	getFn    func(context.Context, uuid.UUID) (*model.Manifest, error)
+	createFn       func(context.Context, *model.CreateManifestRequest) (*model.Manifest, error)
+	listFn         func(context.Context, model.ManifestListFilter) ([]model.Manifest, error)
+	getFn          func(context.Context, uuid.UUID) (*model.Manifest, error)
+	getResourcesFn func(context.Context, uuid.UUID) (*model.ManifestResourcesView, error)
 }
 
 func (s stubManifestService) CreateManifest(ctx context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
@@ -31,6 +32,10 @@ func (s stubManifestService) List(ctx context.Context, filter model.ManifestList
 
 func (s stubManifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifest, error) {
 	return s.getFn(ctx, id)
+}
+
+func (s stubManifestService) GetResources(ctx context.Context, id uuid.UUID) (*model.ManifestResourcesView, error) {
+	return s.getResourcesFn(ctx, id)
 }
 
 func TestCreateManifestReturnsCreated(t *testing.T) {
@@ -135,5 +140,70 @@ func TestGetManifestNotFound(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("got %d want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestGetManifestResourcesReturnsGroupedFrozenObjects(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	manifestID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			getResourcesFn: func(_ context.Context, id uuid.UUID) (*model.ManifestResourcesView, error) {
+				if id != manifestID {
+					t.Fatalf("id = %s want %s", id, manifestID)
+				}
+				return &model.ManifestResourcesView{
+					ManifestID:     manifestID,
+					ApplicationID:  uuid.MustParse("22222222-2222-2222-2222-222222222222"),
+					EnvironmentID:  "staging",
+					Resources: model.ManifestGroupedResources{
+						ConfigMap: &model.ManifestRenderedResource{
+							Kind:      "ConfigMap",
+							Name:      "demo-api-config",
+							Namespace: "staging",
+							YAML:      "apiVersion: v1",
+							Object:    map[string]any{"kind": "ConfigMap"},
+						},
+						Deployment: &model.ManifestRenderedResource{
+							Kind:      "Deployment",
+							Name:      "demo-api",
+							Namespace: "staging",
+							YAML:      "apiVersion: apps/v1",
+							Object:    map[string]any{"kind": "Deployment"},
+						},
+						Services: []model.ManifestRenderedResource{{
+							Kind:      "Service",
+							Name:      "demo-api",
+							Namespace: "staging",
+							YAML:      "apiVersion: v1",
+							Object:    map[string]any{"kind": "Service"},
+						}},
+					},
+				}, nil
+			},
+		},
+	}
+	r := gin.New()
+	r.GET("/api/v1/manifests/:id/resources", handler.GetResources)
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/manifests/"+manifestID.String()+"/resources", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("got %d want %d body=%s", rec.Code, http.StatusOK, rec.Body.String())
+	}
+	var payload struct {
+		Data model.ManifestResourcesView `json:"data"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if payload.Data.Resources.ConfigMap == nil || payload.Data.Resources.Deployment == nil {
+		t.Fatalf("unexpected grouped resources %+v", payload.Data.Resources)
+	}
+	if payload.Data.Resources.Rollout != nil {
+		t.Fatalf("expected rollout nil, got %+v", payload.Data.Resources.Rollout)
+	}
+	if len(payload.Data.Resources.Services) != 1 {
+		t.Fatalf("services len = %d want 1", len(payload.Data.Resources.Services))
 	}
 }

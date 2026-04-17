@@ -36,8 +36,16 @@ func joinRenderedYAML(objects []model.ManifestRenderedObject) string {
 	return strings.Join(parts, "\n---\n")
 }
 
-func renderManifestObjects(namespace, applicationName, configMapName string, appConfig model.ManifestAppConfig, workload model.ManifestWorkloadConfig, services []model.ManifestService, routes []model.ManifestRoute, imageRef string, annotations map[string]string) ([]model.ManifestRenderedObject, error) {
+func renderManifestObjects(namespace, applicationName, applicationID, environmentID, configMapName string, appConfig model.ManifestAppConfig, workload model.ManifestWorkloadConfig, services []model.ManifestService, routes []model.ManifestRoute, imageRef string, annotations map[string]string) ([]model.ManifestRenderedObject, error) {
 	objects := make([]model.ManifestRenderedObject, 0, len(services)+3)
+	selectorLabels := map[string]string{
+		"app.kubernetes.io/name": applicationName,
+	}
+	workloadLabels := map[string]string{
+		"app.kubernetes.io/name": applicationName,
+		"devflow.application/id": applicationID,
+		"devflow.environment/id": environmentID,
+	}
 
 	configMap := map[string]any{
 		"apiVersion": "v1",
@@ -72,10 +80,8 @@ func renderManifestObjects(namespace, applicationName, configMapName string, app
 				"namespace": namespace,
 			},
 			"spec": map[string]any{
-				"selector": map[string]string{
-					"app.kubernetes.io/name": applicationName,
-				},
-				"ports": ports,
+				"selector": selectorLabels,
+				"ports":    ports,
 			},
 		}
 		item, err := marshalRenderedObject("Service", service.Name, namespace, serviceObj)
@@ -137,19 +143,16 @@ func renderManifestObjects(namespace, applicationName, configMapName string, app
 		"metadata": map[string]any{
 			"name":      applicationName,
 			"namespace": namespace,
+			"labels":    workloadLabels,
 		},
 		"spec": map[string]any{
 			"replicas": workload.Replicas,
 			"selector": map[string]any{
-				"matchLabels": map[string]string{
-					"app.kubernetes.io/name": applicationName,
-				},
+				"matchLabels": selectorLabels,
 			},
 			"template": map[string]any{
 				"metadata": map[string]any{
-					"labels": map[string]string{
-						"app.kubernetes.io/name": applicationName,
-					},
+					"labels":      workloadLabels,
 					"annotations": templateAnnotations,
 				},
 				"spec": map[string]any{

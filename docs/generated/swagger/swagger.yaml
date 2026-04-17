@@ -176,6 +176,21 @@ definitions:
       name:
         type: string
     type: object
+  pkg_api.ManifestGroupedResourcesDoc:
+    properties:
+      configmap:
+        $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+      deployment:
+        $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+      rollout:
+        $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+      services:
+        items:
+          $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+        type: array
+      virtualservice:
+        $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+    type: object
   pkg_api.ManifestListResponse:
     properties:
       data:
@@ -195,6 +210,40 @@ definitions:
         type: string
       yaml:
         type: string
+    type: object
+  pkg_api.ManifestRenderedResourceDoc:
+    properties:
+      kind:
+        type: string
+      name:
+        type: string
+      namespace:
+        type: string
+      object:
+        additionalProperties: {}
+        type: object
+      yaml:
+        type: string
+    type: object
+  pkg_api.ManifestResourcesResponse:
+    properties:
+      data:
+        $ref: '#/definitions/pkg_api.ManifestResourcesViewDoc'
+    type: object
+  pkg_api.ManifestResourcesViewDoc:
+    properties:
+      application_id:
+        type: string
+      environment_id:
+        type: string
+      manifest_id:
+        type: string
+      rendered_objects:
+        items:
+          $ref: '#/definitions/pkg_api.ManifestRenderedResourceDoc'
+        type: array
+      resources:
+        $ref: '#/definitions/pkg_api.ManifestGroupedResourcesDoc'
     type: object
   pkg_api.ManifestResponse:
     properties:
@@ -454,6 +503,36 @@ paths:
           schema:
             $ref: '#/definitions/httpx.ErrorResponse'
       summary: Get manifest
+      tags:
+      - Manifest
+  /api/v1/manifests/{id}/resources:
+    get:
+      parameters:
+      - description: Manifest ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/pkg_api.ManifestResourcesResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/httpx.ErrorResponse'
+      summary: Get manifest frozen resources
       tags:
       - Manifest
   /api/v1/releases:

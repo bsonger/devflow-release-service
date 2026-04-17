@@ -132,6 +132,9 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 			if !strings.Contains(item.YAML, "configMap:") || !strings.Contains(item.YAML, "name: runtime-service-config") || !strings.Contains(item.YAML, "mountPath: /etc/devflow/config/config.yaml") {
 				t.Fatalf("expected deployment to mount runtime-service-config configmap, got:\n%s", item.YAML)
 			}
+			if !strings.Contains(item.YAML, "devflow.application/id: 11111111-1111-1111-1111-111111111111") || !strings.Contains(item.YAML, "devflow.environment/id: staging") {
+				t.Fatalf("expected deployment to carry devflow routing labels, got:\n%s", item.YAML)
+			}
 		}
 	}
 	if !hasPullSecret {

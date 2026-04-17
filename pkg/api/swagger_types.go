@@ -103,6 +103,30 @@ type ManifestRenderedObjectDoc struct {
 	YAML      string `json:"yaml"`
 }
 
+type ManifestRenderedResourceDoc struct {
+	Kind      string         `json:"kind"`
+	Name      string         `json:"name"`
+	Namespace string         `json:"namespace"`
+	YAML      string         `json:"yaml"`
+	Object    map[string]any `json:"object,omitempty"`
+}
+
+type ManifestGroupedResourcesDoc struct {
+	ConfigMap      *ManifestRenderedResourceDoc  `json:"configmap,omitempty"`
+	Deployment     *ManifestRenderedResourceDoc  `json:"deployment,omitempty"`
+	Rollout        *ManifestRenderedResourceDoc  `json:"rollout,omitempty"`
+	Services       []ManifestRenderedResourceDoc `json:"services,omitempty"`
+	VirtualService *ManifestRenderedResourceDoc  `json:"virtualservice,omitempty"`
+}
+
+type ManifestResourcesViewDoc struct {
+	ManifestID      uuid.UUID                   `json:"manifest_id"`
+	ApplicationID   uuid.UUID                   `json:"application_id"`
+	EnvironmentID   string                      `json:"environment_id"`
+	Resources       ManifestGroupedResourcesDoc `json:"resources"`
+	RenderedObjects []ManifestRenderedResourceDoc `json:"rendered_objects,omitempty"`
+}
+
 type ManifestDoc struct {
 	ID                     uuid.UUID                   `json:"id"`
 	ApplicationID          uuid.UUID                   `json:"application_id"`

@@ -221,6 +221,52 @@ const docTemplate = `{
                 }
             }
         },
+        "/api/v1/manifests/{id}/resources": {
+            "get": {
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "Manifest"
+                ],
+                "summary": "Get manifest frozen resources",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Manifest ID",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/pkg_api.ManifestResourcesResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/httpx.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/api/v1/releases": {
             "get": {
                 "tags": [
@@ -567,6 +613,29 @@ const docTemplate = `{
                 }
             }
         },
+        "pkg_api.ManifestGroupedResourcesDoc": {
+            "type": "object",
+            "properties": {
+                "configmap": {
+                    "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                },
+                "deployment": {
+                    "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                },
+                "rollout": {
+                    "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                },
+                "services": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                    }
+                },
+                "virtualservice": {
+                    "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                }
+            }
+        },
         "pkg_api.ManifestListResponse": {
             "type": "object",
             "properties": {
@@ -595,6 +664,58 @@ const docTemplate = `{
                 },
                 "yaml": {
                     "type": "string"
+                }
+            }
+        },
+        "pkg_api.ManifestRenderedResourceDoc": {
+            "type": "object",
+            "properties": {
+                "kind": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "namespace": {
+                    "type": "string"
+                },
+                "object": {
+                    "type": "object",
+                    "additionalProperties": {}
+                },
+                "yaml": {
+                    "type": "string"
+                }
+            }
+        },
+        "pkg_api.ManifestResourcesResponse": {
+            "type": "object",
+            "properties": {
+                "data": {
+                    "$ref": "#/definitions/pkg_api.ManifestResourcesViewDoc"
+                }
+            }
+        },
+        "pkg_api.ManifestResourcesViewDoc": {
+            "type": "object",
+            "properties": {
+                "application_id": {
+                    "type": "string"
+                },
+                "environment_id": {
+                    "type": "string"
+                },
+                "manifest_id": {
+                    "type": "string"
+                },
+                "rendered_objects": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/pkg_api.ManifestRenderedResourceDoc"
+                    }
+                },
+                "resources": {
+                    "$ref": "#/definitions/pkg_api.ManifestGroupedResourcesDoc"
                 }
             }
         },

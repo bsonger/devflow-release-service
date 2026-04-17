@@ -19,6 +19,7 @@ type manifestService interface {
 	CreateManifest(context.Context, *model.CreateManifestRequest) (*model.Manifest, error)
 	List(context.Context, model.ManifestListFilter) ([]model.Manifest, error)
 	Get(context.Context, uuid.UUID) (*model.Manifest, error)
+	GetResources(context.Context, uuid.UUID) (*model.ManifestResourcesView, error)
 }
 
 type ManifestHandler struct {
@@ -32,6 +33,10 @@ type ManifestResponse struct {
 type ManifestListResponse struct {
 	Data       []ManifestDoc    `json:"data"`
 	Pagination httpx.Pagination `json:"pagination"`
+}
+
+type ManifestResourcesResponse struct {
+	Data *ManifestResourcesViewDoc `json:"data"`
 }
 
 func NewManifestHandler() *ManifestHandler {
@@ -130,6 +135,34 @@ func (h *ManifestHandler) Get(c *gin.Context) {
 		return
 	}
 	item, err := h.svc.Get(c.Request.Context(), id)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
+		return
+	}
+	httpx.WriteData(c, http.StatusOK, item)
+}
+
+// GetManifestResources godoc
+// @Summary Get manifest frozen resources
+// @Tags Manifest
+// @Produce json
+// @Param id path string true "Manifest ID"
+// @Success 200 {object} api.ManifestResourcesResponse
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/manifests/{id}/resources [get]
+func (h *ManifestHandler) GetResources(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
+		return
+	}
+	item, err := h.svc.GetResources(c.Request.Context(), id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
