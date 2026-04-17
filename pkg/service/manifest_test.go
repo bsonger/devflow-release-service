@@ -25,6 +25,7 @@ func TestBuildManifestPrefersDigestAndRendersObjects(t *testing.T) {
 	appConfig := &downstream.AppConfig{
 		ID:                "cfg-1",
 		Name:              "demo-config",
+		MountPath:         "/workspace/config",
 		RenderedConfigMap: map[string]string{"app.yaml": "foo: bar"},
 		Files:             []downstream.ManifestFile{{Name: "app.yaml", Content: "foo: bar"}},
 	}
@@ -81,7 +82,7 @@ func TestBuildManifestRejectsInvalidRouteTarget(t *testing.T) {
 		RepoAddress:   "registry.cn-hangzhou.aliyuncs.com/devflow",
 		Tag:           "20260411-120000",
 	}
-	appConfig := &downstream.AppConfig{RenderedConfigMap: map[string]string{"app.yaml": "foo: bar"}}
+	appConfig := &downstream.AppConfig{MountPath: "/workspace/config", RenderedConfigMap: map[string]string{"app.yaml": "foo: bar"}}
 	workload := &downstream.WorkloadConfig{Replicas: 1, WorkloadType: "deployment"}
 	_, err := buildManifest(req, image, "demo-api", appConfig, workload, nil, []downstream.ManifestRoute{{
 		Name:        "bad",
@@ -108,7 +109,7 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 		Tag:           "20260411-120000",
 		Digest:        "sha256:abc",
 	}
-	appConfig := &downstream.AppConfig{RenderedConfigMap: map[string]string{"app.yaml": "foo: bar"}}
+	appConfig := &downstream.AppConfig{MountPath: "/workspace/config/configuration.yaml", RenderedConfigMap: map[string]string{"configuration.yaml": "foo: bar"}}
 	workload := &downstream.WorkloadConfig{Replicas: 1, WorkloadType: "deployment"}
 	got, err := buildManifest(req, image, "devflow-runtime-service", appConfig, workload, nil, nil, "staging", model.ImageRegistryConfig{
 		Registry:  "registry.cn-hangzhou.aliyuncs.com",
@@ -129,8 +130,11 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 			if strings.Contains(item.YAML, "imagePullSecrets:") && strings.Contains(item.YAML, "aliyun-docker-config") {
 				hasPullSecret = true
 			}
-			if !strings.Contains(item.YAML, "configMap:") || !strings.Contains(item.YAML, "name: runtime-service-config") || !strings.Contains(item.YAML, "mountPath: /etc/devflow/config/config.yaml") {
-				t.Fatalf("expected deployment to mount runtime-service-config configmap, got:\n%s", item.YAML)
+			if !strings.Contains(item.YAML, "configMap:") || !strings.Contains(item.YAML, "name: runtime-service-config") || !strings.Contains(item.YAML, "mountPath: /workspace/config/configuration.yaml") || !strings.Contains(item.YAML, "subPath: configuration.yaml") {
+				t.Fatalf("expected deployment to mount runtime-service-config configmap via configured mount path, got:\n%s", item.YAML)
+			}
+			if strings.Contains(item.YAML, "envFrom:") {
+				t.Fatalf("did not expect config yaml to be exposed through envFrom, got:\n%s", item.YAML)
 			}
 			if !strings.Contains(item.YAML, "devflow.application/id: 11111111-1111-1111-1111-111111111111") || !strings.Contains(item.YAML, "devflow.environment/id: staging") {
 				t.Fatalf("expected deployment to carry devflow routing labels, got:\n%s", item.YAML)

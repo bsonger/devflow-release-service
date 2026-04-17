@@ -3,6 +3,8 @@ package service
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
@@ -47,6 +49,9 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 		"devflow.environment/id": environmentID,
 	}
 
+	configFiles := manifestConfigFiles(appConfig)
+	configMapData, volumeItems := configMapVolumeEntries(configFiles)
+	mountPath, subPath := resolveAppConfigMount(appConfig, configFiles)
 	configMap := map[string]any{
 		"apiVersion": "v1",
 		"kind":       "ConfigMap",
@@ -54,7 +59,7 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 			"name":      configMapName,
 			"namespace": namespace,
 		},
-		"data": appConfig.Data,
+		"data": configMapData,
 	}
 	item, err := marshalRenderedObject("ConfigMap", configMapName, namespace, configMap)
 	if err != nil {
@@ -137,6 +142,23 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 		templateAnnotations[k] = v
 	}
 	deploymentConfigName := workloadConfigResourceName(applicationName)
+	volumeMount := map[string]any{
+		"name":      "config",
+		"mountPath": mountPath,
+		"readOnly":  true,
+	}
+	if subPath != "" {
+		volumeMount["subPath"] = subPath
+	}
+	configVolume := map[string]any{
+		"name": "config",
+		"configMap": map[string]any{
+			"name": deploymentConfigName,
+		},
+	}
+	if len(volumeItems) > 0 {
+		configVolume["configMap"].(map[string]any)["items"] = volumeItems
+	}
 	deploymentObj := map[string]any{
 		"apiVersion": "apps/v1",
 		"kind":       "Deployment",
@@ -158,24 +180,13 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 				"spec": map[string]any{
 					"imagePullSecrets": []map[string]any{{"name": "aliyun-docker-config"}},
 					"containers": []map[string]any{{
-						"name":      applicationName,
-						"image":     imageRef,
-						"env":       env,
-						"envFrom":   []map[string]any{{"configMapRef": map[string]any{"name": configMapName}}},
-						"resources": workload.Resources,
-						"volumeMounts": []map[string]any{{
-							"name":      "config",
-							"mountPath": "/etc/devflow/config/config.yaml",
-							"subPath":   "config.yaml",
-							"readOnly":  true,
-						}},
+						"name":         applicationName,
+						"image":        imageRef,
+						"env":          env,
+						"resources":    workload.Resources,
+						"volumeMounts": []map[string]any{volumeMount},
 					}},
-					"volumes": []map[string]any{{
-						"name": "config",
-						"configMap": map[string]any{
-							"name": deploymentConfigName,
-						},
-					}},
+					"volumes": []map[string]any{configVolume},
 				},
 			},
 		},
@@ -214,6 +225,69 @@ func workloadConfigResourceName(applicationName string) string {
 		trimmed = applicationName
 	}
 	return trimmed + "-config"
+}
+
+func manifestConfigFiles(appConfig model.ManifestAppConfig) []model.ManifestFile {
+	if len(appConfig.Files) > 0 {
+		out := make([]model.ManifestFile, len(appConfig.Files))
+		copy(out, appConfig.Files)
+		return out
+	}
+	if len(appConfig.Data) == 0 {
+		return nil
+	}
+	keys := make([]string, 0, len(appConfig.Data))
+	for key := range appConfig.Data {
+		keys = append(keys, key)
+	}
+	sort.Strings(keys)
+	out := make([]model.ManifestFile, 0, len(keys))
+	for _, key := range keys {
+		out = append(out, model.ManifestFile{Name: key, Content: appConfig.Data[key]})
+	}
+	return out
+}
+
+func configMapVolumeEntries(files []model.ManifestFile) (map[string]string, []map[string]any) {
+	data := make(map[string]string, len(files))
+	items := make([]map[string]any, 0, len(files))
+	for index, file := range files {
+		key := fmt.Sprintf("config-%d", index)
+		path := strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(file.Name)), "./")
+		if path == "" {
+			path = fmt.Sprintf("config-%d.yaml", index)
+		}
+		data[key] = file.Content
+		items = append(items, map[string]any{
+			"key":  key,
+			"path": path,
+		})
+	}
+	return data, items
+}
+
+func resolveAppConfigMount(appConfig model.ManifestAppConfig, files []model.ManifestFile) (string, string) {
+	mountPath := strings.TrimSpace(appConfig.MountPath)
+	if mountPath == "" {
+		mountPath = "/etc/devflow/config"
+	}
+	normalized := strings.ToLower(mountPath)
+	if len(files) == 1 && (strings.HasSuffix(normalized, ".yaml") || strings.HasSuffix(normalized, ".yml") || strings.HasSuffix(normalized, ".json")) {
+		subPath := strings.TrimPrefix(filepath.ToSlash(strings.TrimSpace(files[0].Name)), "./")
+		if subPath == "" {
+			subPath = defaultConfigMountFile(files[0].Name)
+		}
+		return mountPath, subPath
+	}
+	return mountPath, ""
+}
+
+func defaultConfigMountFile(name string) string {
+	base := filepath.Base(strings.TrimSpace(name))
+	if base == "." || base == string(filepath.Separator) || base == "" {
+		return "configuration.yaml"
+	}
+	return base
 }
 
 func uniqueHosts(routes []model.ManifestRoute) []string {

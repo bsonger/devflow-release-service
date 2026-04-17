@@ -27,7 +27,7 @@ The rendered result is the deployment bundle that release execution should consu
 
 The service resolves the effective owner resources, validates route targets, chooses the image reference with `digest` first and `tag` second, and persists:
 - rendered workload Deployment now includes `imagePullSecrets: [aliyun-docker-config]`
-- rendered workload Deployment mounts `/etc/devflow/config/config.yaml` from the environment-level `*-config` ConfigMap
+- rendered workload Deployment mounts app-config YAML files from the environment-level `*-config` ConfigMap using the frozen `app_config_snapshot.mount_path`
 - rendered workload Deployment / PodTemplate now includes `devflow.application/id` and `devflow.environment/id` labels so live Pod watchers can route cluster state back to runtime-service
 - source snapshots
 - rendered objects

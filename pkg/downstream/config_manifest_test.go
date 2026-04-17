@@ -21,7 +21,7 @@ func TestFindAppConfigFallsBackToBaseEnvironmentEntry(t *testing.T) {
 				t.Fatalf("unexpected query %s", r.URL.RawQuery)
 			}
 		case "/api/v1/app-configs/cfg-base":
-			_, _ = io.WriteString(w, `{"data":{"id":"cfg-base","application_id":"app-1","environment_id":"base","name":"base","files":[{"name":"app.yaml","content":"foo: bar"}],"rendered_configmap":{"data":{"app.yaml":"foo: bar"}}}}`)
+			_, _ = io.WriteString(w, `{"data":{"id":"cfg-base","application_id":"app-1","environment_id":"base","name":"base","mount_path":"/etc/devflow/config","files":[{"name":"configuration.yaml","content":"foo: bar"}],"rendered_configmap":{"data":{"configuration.yaml":"foo: bar"}}}}`)
 		default:
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
@@ -35,6 +35,9 @@ func TestFindAppConfigFallsBackToBaseEnvironmentEntry(t *testing.T) {
 	}
 	if got == nil || got.ID != "cfg-base" || got.EnvironmentID != "base" {
 		t.Fatalf("unexpected config %+v", got)
+	}
+	if got.MountPath != "/etc/devflow/config" {
+		t.Fatalf("expected mount path, got %+v", got)
 	}
 }
 

@@ -51,7 +51,7 @@
   - the app config has renderable file data
   - the workload config exists for the application + environment
 - manifest rendering builds a frozen deployment bundle from services, routes, app config, workload config, and image
-- rendered workloads include registry pull secrets and mount `/etc/devflow/config/config.yaml` from the environment config ConfigMap
+- rendered workloads include registry pull secrets and mount app-config files from the environment config ConfigMap using `AppConfig.mount_path`
 - when an environment-specific app/workload config is missing, manifest creation falls back to the application base config entry
 - rendered workload image refs prefer `name@sha256:...`; when digest is missing they fall back to `name:tag`
 - manifest creation can publish the frozen bundle as an OCI artifact

@@ -340,6 +340,7 @@ func buildManifest(req *model.CreateManifestRequest, image *model.Image, applica
 	appConfigSnapshot := model.ManifestAppConfig{
 		ID:           appConfig.ID,
 		Name:         appConfig.Name,
+		MountPath:    appConfig.MountPath,
 		Files:        files,
 		Data:         configData,
 		SourcePath:   appConfig.SourcePath,

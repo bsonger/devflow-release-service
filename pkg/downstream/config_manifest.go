@@ -21,6 +21,7 @@ type AppConfig struct {
 	ApplicationID     string            `json:"application_id"`
 	EnvironmentID     string            `json:"environment_id"`
 	Name              string            `json:"name"`
+	MountPath         string            `json:"mount_path,omitempty"`
 	SourcePath        string            `json:"source_path"`
 	Files             []ManifestFile    `json:"files,omitempty"`
 	RenderedConfigMap map[string]string `json:"rendered_configmap,omitempty"`
@@ -67,6 +68,7 @@ func (c *ConfigManifestClient) GetAppConfig(ctx context.Context, id string) (*Ap
 		ApplicationID     string                    `json:"application_id"`
 		EnvironmentID     string                    `json:"environment_id"`
 		Name              string                    `json:"name"`
+		MountPath         string                    `json:"mount_path,omitempty"`
 		SourcePath        string                    `json:"source_path"`
 		Files             []ManifestFile            `json:"files,omitempty"`
 		RenderedConfigMap renderedConfigMapEnvelope `json:"rendered_configmap,omitempty"`
@@ -80,6 +82,7 @@ func (c *ConfigManifestClient) GetAppConfig(ctx context.Context, id string) (*Ap
 		ApplicationID:     item.ApplicationID,
 		EnvironmentID:     item.EnvironmentID,
 		Name:              item.Name,
+		MountPath:         item.MountPath,
 		SourcePath:        item.SourcePath,
 		Files:             item.Files,
 		RenderedConfigMap: item.RenderedConfigMap.Data,

@@ -27,7 +27,7 @@ The target relational resource model is:
 
 - `Image` = build artifact + frozen repository/service snapshot
 - `Manifest` = frozen deployment YAML snapshot + OCI deployment artifact built from image + service + route + app config + workload config
-- rendered Deployments are release-owned output and normalize runtime mounts such as image pull secrets plus `/etc/devflow/config/config.yaml` ConfigMap mounting
+- rendered Deployments are release-owned output and normalize runtime mounts such as image pull secrets plus config-file volume mounting driven by `AppConfig.mount_path`
 - `Release` = deploy command + manifest reference + rollout state
 - `Intent` = long-running execution tracking record
 

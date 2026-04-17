@@ -71,6 +71,7 @@ type ManifestFile struct {
 type ManifestAppConfig struct {
 	ID           string            `json:"id,omitempty"`
 	Name         string            `json:"name,omitempty"`
+	MountPath    string            `json:"mount_path,omitempty"`
 	Files        []ManifestFile    `json:"files,omitempty"`
 	Data         map[string]string `json:"data,omitempty"`
 	SourcePath   string            `json:"source_path,omitempty"`
