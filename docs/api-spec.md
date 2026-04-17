@@ -55,14 +55,14 @@
 - when an environment-specific app/workload config is missing, manifest creation falls back to the application base config entry
 - rendered workload image refs prefer `name@sha256:...`; when digest is missing they fall back to `name:tag`
 - manifest creation can publish the frozen bundle as an OCI artifact
-- manifest OCI publishing uses `MANIFEST_REGISTRY`, `MANIFEST_REGISTRY_NAMESPACE`, and optional `MANIFEST_REGISTRY_REPOSITORY`
-- manifest OCI publishing supports `MANIFEST_REGISTRY_PLAIN_HTTP=true` for in-cluster registries such as `zot`
-- when manifest-specific registry vars are unset, OCI publishing falls back to image registry config and credentials
+- manifest OCI publishing uses `config.yaml` `manifest_registry.*`
+- `manifest_registry.plain_http=true` supports in-cluster registries such as `zot`
+- when manifest-specific registry fields are unset, OCI publishing falls back to `image_registry.*`
 - `POST /api/v1/images` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
 - image creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
 - observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
 - `repo_address` and image naming are resolved during image creation
-- image registry target is read from backend config: `IMAGE_REGISTRY` and `IMAGE_REGISTRY_NAMESPACE`
+- image registry target is read from mounted `config.yaml` `image_registry.registry` and `image_registry.namespace`
 - image names follow branch rules: `main` keeps the base name, non-`main` appends a normalized branch suffix
 - image tags prefer an exact Git tag on `HEAD`; when absent they fall back to `YYYYMMDD-HHmmss`
 - `POST /api/v1/releases` accepts `manifest_id`, optional `env`, and optional release `type`

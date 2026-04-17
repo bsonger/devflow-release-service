@@ -58,11 +58,11 @@ When manifest registry publishing is enabled, manifest creation also:
   - `artifact_pushed_at`
 
 Registry config resolution order:
-- `MANIFEST_REGISTRY`
-- `MANIFEST_REGISTRY_NAMESPACE`
-- optional `MANIFEST_REGISTRY_REPOSITORY` with default `manifests`
-- optional `MANIFEST_REGISTRY_PLAIN_HTTP=true` for in-cluster HTTP registries
-- fallback to `IMAGE_REGISTRY`, `IMAGE_REGISTRY_NAMESPACE`, `IMAGE_REGISTRY_USERNAME`, `IMAGE_REGISTRY_PASSWORD`
+- `config.yaml` `manifest_registry.registry`
+- `config.yaml` `manifest_registry.namespace`
+- optional `config.yaml` `manifest_registry.repository` with default `manifests`
+- optional `config.yaml` `manifest_registry.plain_http=true` for in-cluster HTTP registries
+- fallback to `config.yaml` `image_registry.*`
 
 ## Returned shape
 

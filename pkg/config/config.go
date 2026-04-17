@@ -8,6 +8,7 @@ import (
 	"github.com/bsonger/devflow-release-service/pkg/argoclient"
 	localtekton "github.com/bsonger/devflow-release-service/pkg/infra/tekton"
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-release-service/pkg/runtime"
 	"github.com/bsonger/devflow-release-service/pkg/runtimeclient"
 	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/bsonger/devflow-release-service/pkg/store"
@@ -28,15 +29,18 @@ import (
 )
 
 type Config struct {
-	Server    *model.ServerConfig         `mapstructure:"server" json:"server" yaml:"server"`
-	Postgres  *model.PostgresConfig       `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
-	Log       *model.LogConfig            `mapstructure:"log" json:"log" yaml:"log"`
-	Otel      *model.OtelConfig           `mapstructure:"otel" json:"otel" yaml:"otel"`
-	Repo      *model.Repo                 `mapstructure:"repo" json:"repo" yaml:"repo"`
-	Runtime   *model.RuntimeServiceConfig `mapstructure:"runtime" json:"runtime" yaml:"runtime"`
-	Observer  *model.ObserverConfig       `mapstructure:"observer" json:"observer" yaml:"observer"`
-	Consul    *model.Consul               `mapstructure:"consul" json:"consul" yaml:"consul"`
-	Pyroscope string                      `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
+	Server           *model.ServerConfig                  `mapstructure:"server" json:"server" yaml:"server"`
+	Postgres         *model.PostgresConfig                `mapstructure:"postgres" json:"postgres" yaml:"postgres"`
+	Log              *model.LogConfig                     `mapstructure:"log" json:"log" yaml:"log"`
+	Otel             *model.OtelConfig                    `mapstructure:"otel" json:"otel" yaml:"otel"`
+	Repo             *model.Repo                          `mapstructure:"repo" json:"repo" yaml:"repo"`
+	Runtime          *model.RuntimeServiceConfig          `mapstructure:"runtime" json:"runtime" yaml:"runtime"`
+	Observer         *model.ObserverConfig                `mapstructure:"observer" json:"observer" yaml:"observer"`
+	Downstream       *model.DownstreamConfig              `mapstructure:"downstream" json:"downstream" yaml:"downstream"`
+	ImageRegistry    *model.ImageRegistryRuntimeConfig    `mapstructure:"image_registry" json:"image_registry" yaml:"image_registry"`
+	ManifestRegistry *model.ManifestRegistryRuntimeConfig `mapstructure:"manifest_registry" json:"manifest_registry" yaml:"manifest_registry"`
+	Consul           *model.Consul                        `mapstructure:"consul" json:"consul" yaml:"consul"`
+	Pyroscope        string                               `mapstructure:"pyroscope" json:"pyroscope" yaml:"pyroscope"`
 }
 
 func Load() (*Config, error) {
@@ -105,8 +109,26 @@ func InitRuntime(ctx context.Context, config *Config, serviceName string) (func(
 	if err != nil {
 		return shutdown, err
 	}
+	imageRegistryCfg, err := runtime.ImageRegistryConfigFromConfig(config.ImageRegistry)
+	if err != nil {
+		return shutdown, err
+	}
+	manifestRegistryCfg, manifestRegistryEnabled, err := runtime.ManifestRegistryConfigFromConfig(config.ManifestRegistry, config.ImageRegistry)
+	if err != nil {
+		return shutdown, err
+	}
 	api.ObserverSharedToken = stringValue(config.Observer, func(v *model.ObserverConfig) string { return v.SharedToken })
 	service.SetRuntimeClient(runtimeclient.New(stringValue(config.Runtime, func(v *model.RuntimeServiceConfig) string { return v.BaseURL })))
+	service.ConfigureRuntimeConfig(service.RuntimeConfig{
+		ImageRegistry:           imageRegistryCfg,
+		ManifestRegistry:        manifestRegistryCfg,
+		ManifestRegistryEnabled: manifestRegistryEnabled,
+		Downstream: model.DownstreamConfig{
+			PlatformOrchestratorBaseURL: stringValue(config.Downstream, func(v *model.DownstreamConfig) string { return v.PlatformOrchestratorBaseURL }),
+			NetworkServiceBaseURL:       stringValue(config.Downstream, func(v *model.DownstreamConfig) string { return v.NetworkServiceBaseURL }),
+			ConfigServiceBaseURL:        stringValue(config.Downstream, func(v *model.DownstreamConfig) string { return v.ConfigServiceBaseURL }),
+		},
+	})
 	model.InitConfigRepo(config.Repo)
 	return func(shutdownCtx context.Context) error {
 		closeErr := db.Close()

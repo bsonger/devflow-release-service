@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
-	"github.com/bsonger/devflow-release-service/pkg/runtime"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	oras "oras.land/oras-go/v2"
 	"oras.land/oras-go/v2/content"
@@ -22,10 +21,10 @@ import (
 )
 
 const (
-	manifestOCIArtifactType       = "application/vnd.devflow.manifest.bundle.v1"
-	manifestOCIConfigMediaType    = "application/vnd.devflow.manifest.config.v1+json"
-	manifestOCILayerMediaType     = "application/vnd.oci.image.layer.v1.tar+gzip"
-	manifestOCIManifestMediaType  = ocispec.MediaTypeImageManifest
+	manifestOCIArtifactType      = "application/vnd.devflow.manifest.bundle.v1"
+	manifestOCIConfigMediaType   = "application/vnd.devflow.manifest.config.v1+json"
+	manifestOCILayerMediaType    = "application/vnd.oci.image.layer.v1.tar+gzip"
+	manifestOCIManifestMediaType = ocispec.MediaTypeImageManifest
 )
 
 type manifestArtifactLayer struct {
@@ -74,15 +73,11 @@ type orasManifestArtifactPublisher struct {
 	cfg model.ManifestRegistryConfig
 }
 
-func newManifestArtifactPublishing() (model.ManifestRegistryConfig, manifestArtifactPublisher) {
-	cfg, enabled, err := runtime.ManifestRegistryConfigFromEnv()
-	if err != nil {
-		return model.ManifestRegistryConfig{}, invalidManifestArtifactPublisher{err: err}
-	}
+func newManifestArtifactPublishing(cfg model.ManifestRegistryConfig, enabled bool) manifestArtifactPublisher {
 	if !enabled {
-		return model.ManifestRegistryConfig{}, noopManifestArtifactPublisher{}
+		return noopManifestArtifactPublisher{}
 	}
-	return cfg, orasManifestArtifactPublisher{cfg: cfg}
+	return orasManifestArtifactPublisher{cfg: cfg}
 }
 
 func publishManifestArtifact(ctx context.Context, manifest *model.Manifest, applicationName string, cfg model.ManifestRegistryConfig, publisher manifestArtifactPublisher) error {

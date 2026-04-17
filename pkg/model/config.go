@@ -42,3 +42,25 @@ type RuntimeServiceConfig struct {
 type ObserverConfig struct {
 	SharedToken string `mapstructure:"shared_token" json:"shared_token" yaml:"shared_token"`
 }
+
+type DownstreamConfig struct {
+	PlatformOrchestratorBaseURL string `mapstructure:"platform_orchestrator_base_url" json:"platform_orchestrator_base_url" yaml:"platform_orchestrator_base_url"`
+	NetworkServiceBaseURL       string `mapstructure:"network_service_base_url" json:"network_service_base_url" yaml:"network_service_base_url"`
+	ConfigServiceBaseURL        string `mapstructure:"config_service_base_url" json:"config_service_base_url" yaml:"config_service_base_url"`
+}
+
+type ImageRegistryRuntimeConfig struct {
+	Registry  string `mapstructure:"registry" json:"registry" yaml:"registry"`
+	Namespace string `mapstructure:"namespace" json:"namespace" yaml:"namespace"`
+	Username  string `mapstructure:"username" json:"username" yaml:"username"`
+	Password  string `mapstructure:"password" json:"password" yaml:"password"`
+}
+
+type ManifestRegistryRuntimeConfig struct {
+	Registry   string `mapstructure:"registry" json:"registry" yaml:"registry"`
+	Namespace  string `mapstructure:"namespace" json:"namespace" yaml:"namespace"`
+	Repository string `mapstructure:"repository" json:"repository" yaml:"repository"`
+	Username   string `mapstructure:"username" json:"username" yaml:"username"`
+	Password   string `mapstructure:"password" json:"password" yaml:"password"`
+	PlainHTTP  bool   `mapstructure:"plain_http" json:"plain_http" yaml:"plain_http"`
+}

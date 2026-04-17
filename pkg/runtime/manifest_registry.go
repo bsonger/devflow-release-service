@@ -2,21 +2,19 @@ package runtime
 
 import (
 	"fmt"
-	"os"
-	"strconv"
 	"strings"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
 )
 
-func ManifestRegistryConfigFromEnv() (model.ManifestRegistryConfig, bool, error) {
+func ManifestRegistryConfigFromConfig(source *model.ManifestRegistryRuntimeConfig, image *model.ImageRegistryRuntimeConfig) (model.ManifestRegistryConfig, bool, error) {
 	cfg := model.ManifestRegistryConfig{
-		Registry:   firstNonEmptyEnv("MANIFEST_REGISTRY", "IMAGE_REGISTRY"),
-		Namespace:  firstNonEmptyEnv("MANIFEST_REGISTRY_NAMESPACE", "IMAGE_REGISTRY_NAMESPACE"),
-		Repository: firstNonEmptyEnv("MANIFEST_REGISTRY_REPOSITORY", "MANIFEST_OCI_REPOSITORY"),
-		Username:   firstNonEmptyEnv("MANIFEST_REGISTRY_USERNAME", "IMAGE_REGISTRY_USERNAME"),
-		Password:   firstNonEmptyEnv("MANIFEST_REGISTRY_PASSWORD", "IMAGE_REGISTRY_PASSWORD"),
-		PlainHTTP:  firstBoolEnv("MANIFEST_REGISTRY_PLAIN_HTTP", "MANIFEST_OCI_PLAIN_HTTP", "IMAGE_REGISTRY_PLAIN_HTTP"),
+		Registry:   firstNonEmpty(stringValue(source, func(v *model.ManifestRegistryRuntimeConfig) string { return v.Registry }), stringValue(image, func(v *model.ImageRegistryRuntimeConfig) string { return v.Registry })),
+		Namespace:  firstNonEmpty(stringValue(source, func(v *model.ManifestRegistryRuntimeConfig) string { return v.Namespace }), stringValue(image, func(v *model.ImageRegistryRuntimeConfig) string { return v.Namespace })),
+		Repository: stringValue(source, func(v *model.ManifestRegistryRuntimeConfig) string { return v.Repository }),
+		Username:   firstNonEmpty(stringValue(source, func(v *model.ManifestRegistryRuntimeConfig) string { return v.Username }), stringValue(image, func(v *model.ImageRegistryRuntimeConfig) string { return v.Username })),
+		Password:   firstNonEmpty(stringValue(source, func(v *model.ManifestRegistryRuntimeConfig) string { return v.Password }), stringValue(image, func(v *model.ImageRegistryRuntimeConfig) string { return v.Password })),
+		PlainHTTP:  boolValue(source, func(v *model.ManifestRegistryRuntimeConfig) bool { return v.PlainHTTP }),
 	}
 	if cfg.Repository == "" {
 		cfg.Repository = "manifests"
@@ -33,25 +31,18 @@ func ManifestRegistryConfigFromEnv() (model.ManifestRegistryConfig, bool, error)
 	return cfg, true, nil
 }
 
-func firstNonEmptyEnv(keys ...string) string {
-	for _, key := range keys {
-		if value := strings.TrimSpace(os.Getenv(key)); value != "" {
-			return value
+func firstNonEmpty(values ...string) string {
+	for _, value := range values {
+		if trimmed := strings.TrimSpace(value); trimmed != "" {
+			return trimmed
 		}
 	}
 	return ""
 }
 
-func firstBoolEnv(keys ...string) bool {
-	for _, key := range keys {
-		value := strings.TrimSpace(os.Getenv(key))
-		if value == "" {
-			continue
-		}
-		parsed, err := strconv.ParseBool(value)
-		if err == nil {
-			return parsed
-		}
+func boolValue[T any](value *T, getter func(*T) bool) bool {
+	if value == nil {
+		return false
 	}
-	return false
+	return getter(value)
 }

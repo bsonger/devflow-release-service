@@ -65,7 +65,7 @@
 
 - `application_id` 必须引用存在的 `Application`
 - `repo_address` 从应用元数据派生
-- 镜像仓库目标由全局环境变量 `IMAGE_REGISTRY` 和 `IMAGE_REGISTRY_NAMESPACE` 提供
+- 镜像仓库目标由挂载 `config.yaml` 中的 `image_registry.registry` 和 `image_registry.namespace` 提供
 - 镜像 tag 由服务端按 `YYYYMMDD-HHmmss` 生成后下发给 Tekton
 - `Image` 不再拥有副本数、发布策略或 service 暴露快照
 

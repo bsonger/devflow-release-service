@@ -1,17 +1,23 @@
 package runtime
 
-import "testing"
+import (
+	"testing"
 
-func TestManifestRegistryConfigFromEnvFallsBackToImageRegistry(t *testing.T) {
-	t.Setenv("IMAGE_REGISTRY", "registry.example.com")
-	t.Setenv("IMAGE_REGISTRY_NAMESPACE", "devflow")
-	t.Setenv("IMAGE_REGISTRY_USERNAME", "image-user")
-	t.Setenv("IMAGE_REGISTRY_PASSWORD", "image-pass")
-	t.Setenv("IMAGE_REGISTRY_PLAIN_HTTP", "true")
+	"github.com/bsonger/devflow-release-service/pkg/model"
+)
 
-	cfg, enabled, err := ManifestRegistryConfigFromEnv()
+func TestManifestRegistryConfigFromConfigFallsBackToImageRegistry(t *testing.T) {
+	cfg, enabled, err := ManifestRegistryConfigFromConfig(
+		&model.ManifestRegistryRuntimeConfig{PlainHTTP: true},
+		&model.ImageRegistryRuntimeConfig{
+			Registry:  "registry.example.com",
+			Namespace: "devflow",
+			Username:  "image-user",
+			Password:  "image-pass",
+		},
+	)
 	if err != nil {
-		t.Fatalf("ManifestRegistryConfigFromEnv() error = %v", err)
+		t.Fatalf("ManifestRegistryConfigFromConfig() error = %v", err)
 	}
 	if !enabled {
 		t.Fatal("expected manifest registry publishing to be enabled")
@@ -30,10 +36,11 @@ func TestManifestRegistryConfigFromEnvFallsBackToImageRegistry(t *testing.T) {
 	}
 }
 
-func TestManifestRegistryConfigFromEnvRejectsPartialConfig(t *testing.T) {
-	t.Setenv("MANIFEST_REGISTRY", "registry.example.com")
-
-	_, enabled, err := ManifestRegistryConfigFromEnv()
+func TestManifestRegistryConfigFromConfigRejectsPartialConfig(t *testing.T) {
+	_, enabled, err := ManifestRegistryConfigFromConfig(
+		&model.ManifestRegistryRuntimeConfig{Registry: "registry.example.com"},
+		nil,
+	)
 	if err == nil {
 		t.Fatal("expected error")
 	}

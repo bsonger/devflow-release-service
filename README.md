@@ -14,6 +14,7 @@
 - expose public `Manifest` APIs for rendered deployment bundles
 - accept authenticated Tekton task/status writeback from `devflow-resource-observer`
 - staging now runs in direct execution mode so image builds create Tekton `PipelineRun`s immediately
+- runtime registry/downstream settings are loaded from mounted `config.yaml`, not container env
 
 ## Tekton source of truth
 

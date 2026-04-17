@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -48,7 +49,7 @@ func (s *imageService) CreateImage(ctx context.Context, m *model.Image) (uuid.UU
 	if m.Branch == "" {
 		m.Branch = "main"
 	}
-	registryConfig, err := runtime.ImageRegistryConfigFromEnv()
+	registryConfig, err := configuredImageRegistry()
 	if err != nil {
 		logger.Error("image registry config invalid", zap.Error(err))
 		return uuid.Nil, err
@@ -112,7 +113,7 @@ func (s *imageService) DispatchBuild(ctx context.Context, imageID uuid.UUID) err
 
 func (s *imageService) submitBuild(ctx context.Context, m *model.Image) error {
 	logger := loggingx.LoggerFromContext(ctx)
-	registryConfig, err := runtime.ImageRegistryConfigFromEnv()
+	registryConfig, err := configuredImageRegistry()
 	if err != nil {
 		return err
 	}
@@ -154,6 +155,14 @@ func (s *imageService) submitBuild(ctx context.Context, m *model.Image) error {
 	}
 	m.Steps = BuildStepsFromPipeline(pipeline)
 	return nil
+}
+
+func configuredImageRegistry() (model.ImageRegistryConfig, error) {
+	cfg := CurrentRuntimeConfig().ImageRegistry
+	if cfg.Repository() == "" {
+		return model.ImageRegistryConfig{}, fmt.Errorf("release-service image registry is not configured")
+	}
+	return cfg, nil
 }
 
 func (s *imageService) Update(ctx context.Context, m *model.Image) error {

@@ -4,12 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/bsonger/devflow-release-service/pkg/downstream"
 	"github.com/bsonger/devflow-release-service/pkg/model"
-	"github.com/bsonger/devflow-release-service/pkg/runtime"
 	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/google/uuid"
 	"sigs.k8s.io/yaml"
@@ -44,32 +42,24 @@ type manifestConfigReader interface {
 }
 
 type manifestService struct {
-	images       manifestImageReader
-	orchestrator manifestOrchestratorReader
-	networks     manifestNetworkReader
-	configs      manifestConfigReader
-	apps         *applicationService
-	artifactCfg   model.ManifestRegistryConfig
-	imageRegistry model.ImageRegistryConfig
-	artifacts     manifestArtifactPublisher
+	images manifestImageReader
+	apps   *applicationService
 }
 
 func NewManifestService() *manifestService {
-	artifactCfg, artifactPublisher := newManifestArtifactPublishing()
-	imageRegistry, _ := runtime.ImageRegistryConfigFromEnv()
 	return &manifestService{
-		images:        ImageService,
-		orchestrator:  downstream.NewOrchestratorManifestClient(strings.TrimSpace(os.Getenv("PLATFORM_ORCHESTRATOR_BASE_URL"))),
-		networks:      downstream.NewNetworkManifestClient(strings.TrimSpace(os.Getenv("NETWORK_SERVICE_BASE_URL"))),
-		configs:       downstream.NewConfigManifestClient(strings.TrimSpace(os.Getenv("CONFIG_SERVICE_BASE_URL"))),
-		apps:          ApplicationService,
-		artifactCfg:   artifactCfg,
-		imageRegistry: imageRegistry,
-		artifacts:     artifactPublisher,
+		images: ImageService,
+		apps:   ApplicationService,
 	}
 }
 
 func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
+	runtimeCfg := CurrentRuntimeConfig()
+	orchestrator := downstream.NewOrchestratorManifestClient(strings.TrimSpace(runtimeCfg.Downstream.PlatformOrchestratorBaseURL))
+	networks := downstream.NewNetworkManifestClient(strings.TrimSpace(runtimeCfg.Downstream.NetworkServiceBaseURL))
+	configs := downstream.NewConfigManifestClient(strings.TrimSpace(runtimeCfg.Downstream.ConfigServiceBaseURL))
+	artifacts := newManifestArtifactPublishing(runtimeCfg.ManifestRegistry, runtimeCfg.ManifestRegistryEnabled)
+
 	image, err := s.images.Get(ctx, req.ImageID)
 	if err != nil {
 		return nil, err
@@ -77,28 +67,28 @@ func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateM
 	if image.ApplicationID != req.ApplicationID {
 		return nil, ErrManifestImageApplicationMismatch
 	}
-	if _, err := s.orchestrator.GetApplicationEnvironment(ctx, req.ApplicationID.String(), req.EnvironmentID); err != nil {
+	if _, err := orchestrator.GetApplicationEnvironment(ctx, req.ApplicationID.String(), req.EnvironmentID); err != nil {
 		return nil, ErrManifestEnvironmentBindingMissing
 	}
-	appConfig, err := s.configs.FindAppConfig(ctx, req.ApplicationID.String(), req.EnvironmentID)
+	appConfig, err := configs.FindAppConfig(ctx, req.ApplicationID.String(), req.EnvironmentID)
 	if err != nil {
 		return nil, err
 	}
 	if appConfig == nil || (len(appConfig.Files) == 0 && len(appConfig.RenderedConfigMap) == 0) {
 		return nil, ErrManifestAppConfigMissing
 	}
-	workloadConfig, err := s.configs.FindWorkloadConfig(ctx, req.ApplicationID.String(), req.EnvironmentID)
+	workloadConfig, err := configs.FindWorkloadConfig(ctx, req.ApplicationID.String(), req.EnvironmentID)
 	if err != nil {
 		return nil, err
 	}
 	if workloadConfig == nil {
 		return nil, ErrManifestWorkloadConfigMissing
 	}
-	services, err := s.networks.ListServices(ctx, req.ApplicationID.String())
+	services, err := networks.ListServices(ctx, req.ApplicationID.String())
 	if err != nil {
 		return nil, err
 	}
-	routes, err := s.networks.ListRoutes(ctx, req.ApplicationID.String())
+	routes, err := networks.ListRoutes(ctx, req.ApplicationID.String())
 	if err != nil {
 		return nil, err
 	}
@@ -107,12 +97,12 @@ func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateM
 		return nil, err
 	}
 
-	manifest, err := buildManifest(req, image, application.Name, appConfig, workloadConfig, services, routes, namespaceForEnvironment(req.EnvironmentID), s.imageRegistry)
+	manifest, err := buildManifest(req, image, application.Name, appConfig, workloadConfig, services, routes, namespaceForEnvironment(req.EnvironmentID), runtimeCfg.ImageRegistry)
 	if err != nil {
 		return nil, err
 	}
 	manifest.WithCreateDefault()
-	if err := publishManifestArtifact(ctx, manifest, application.Name, s.artifactCfg, s.artifacts); err != nil {
+	if err := publishManifestArtifact(ctx, manifest, application.Name, runtimeCfg.ManifestRegistry, artifacts); err != nil {
 		return nil, err
 	}
 	if err := s.insert(ctx, manifest); err != nil {
@@ -120,7 +110,6 @@ func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateM
 	}
 	return manifest, nil
 }
-
 
 func resolveManifestImageRepository(image *model.Image, cfg model.ImageRegistryConfig) (string, error) {
 	if image == nil {

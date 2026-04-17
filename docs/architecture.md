@@ -59,7 +59,7 @@ Client
 - `cmd/main.go`
   - process entrypoint only
 - `pkg/config`
-  - config loading
+  - `config.yaml` loading
   - runtime initialization
 - `pkg/router`
   - route registration
@@ -86,6 +86,14 @@ Client
 - Tekton-related clients / resources
 - repo-managed Tekton pipeline/task YAML under `deploy/tekton/base`
 - Argo CD / Kubernetes adapters
+
+## Runtime configuration
+
+- all service runtime settings are loaded from mounted `config.yaml`
+- `downstream.*` owns owner-service base URLs used during manifest resolution
+- `image_registry.*` owns build image target resolution
+- `manifest_registry.*` owns OCI manifest bundle publishing
+- deployment manifests should mount config files instead of injecting those business settings as container env
 
 ## Swagger generation
 
