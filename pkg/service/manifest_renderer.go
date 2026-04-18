@@ -141,7 +141,6 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 	for k, v := range annotations {
 		templateAnnotations[k] = v
 	}
-	deploymentConfigName := workloadConfigResourceName(applicationName)
 	volumeMount := map[string]any{
 		"name":      "config",
 		"mountPath": mountPath,
@@ -153,7 +152,7 @@ func renderManifestObjects(namespace, applicationName, applicationID, environmen
 	configVolume := map[string]any{
 		"name": "config",
 		"configMap": map[string]any{
-			"name": deploymentConfigName,
+			"name": configMapName,
 		},
 	}
 	if len(volumeItems) > 0 {
@@ -216,15 +215,6 @@ func marshalRenderedObject(kind, name, namespace string, object any) (model.Mani
 		Namespace: namespace,
 		YAML:      string(body),
 	}, nil
-}
-
-func workloadConfigResourceName(applicationName string) string {
-	trimmed := strings.TrimSpace(applicationName)
-	trimmed = strings.TrimPrefix(trimmed, "devflow-")
-	if trimmed == "" {
-		trimmed = applicationName
-	}
-	return trimmed + "-config"
 }
 
 func manifestConfigFiles(appConfig model.ManifestAppConfig) []model.ManifestFile {

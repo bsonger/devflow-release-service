@@ -122,15 +122,22 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 		t.Fatalf("unexpected image ref %q", got.ImageRef)
 	}
 	hasPullSecret := false
+	configMapName := ""
 	for _, item := range got.RenderedObjects {
 		if item.Kind == "VirtualService" {
 			t.Fatalf("did not expect virtual service without routes: %+v", item)
+		}
+		if item.Kind == "ConfigMap" {
+			configMapName = item.Name
+			if !strings.HasPrefix(configMapName, "devflow-runtime-service-") {
+				t.Fatalf("expected configmap name to use service prefix, got %q", configMapName)
+			}
 		}
 		if item.Kind == "Deployment" {
 			if strings.Contains(item.YAML, "imagePullSecrets:") && strings.Contains(item.YAML, "aliyun-docker-config") {
 				hasPullSecret = true
 			}
-			if !strings.Contains(item.YAML, "configMap:") || !strings.Contains(item.YAML, "name: runtime-service-config") || !strings.Contains(item.YAML, "mountPath: /workspace/config/configuration.yaml") || !strings.Contains(item.YAML, "subPath: configuration.yaml") {
+			if configMapName == "" || !strings.Contains(item.YAML, "configMap:") || !strings.Contains(item.YAML, "name: "+configMapName) || !strings.Contains(item.YAML, "mountPath: /workspace/config/configuration.yaml") || !strings.Contains(item.YAML, "subPath: configuration.yaml") {
 				t.Fatalf("expected deployment to mount runtime-service-config configmap via configured mount path, got:\n%s", item.YAML)
 			}
 			if strings.Contains(item.YAML, "envFrom:") {
@@ -143,6 +150,9 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 	}
 	if !hasPullSecret {
 		t.Fatal("expected deployment to include aliyun-docker-config imagePullSecrets")
+	}
+	if configMapName == "" {
+		t.Fatal("expected rendered configmap")
 	}
 }
 

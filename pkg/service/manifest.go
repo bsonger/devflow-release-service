@@ -357,7 +357,7 @@ func buildManifest(req *model.CreateManifestRequest, image *model.Image, applica
 		Strategy:     workload.Strategy,
 	}
 
-	configMapName := applicationName + "-config"
+	configMapName := configMapResourceName(appConfigSnapshot, applicationName)
 	renderedObjects, err := renderManifestObjects(namespace, applicationName, req.ApplicationID.String(), req.EnvironmentID, configMapName, appConfigSnapshot, workloadSnapshot, servicesSnapshot, routesSnapshot, imageRef, annotations)
 	if err != nil {
 		return nil, err
@@ -383,4 +383,46 @@ func toModelEnvVars(items []downstream.EnvVar) []model.EnvVar {
 		out = append(out, model.EnvVar{Name: item.Name, Value: item.Value})
 	}
 	return out
+}
+
+func configMapResourceName(appConfig model.ManifestAppConfig, applicationName string) string {
+	base := strings.TrimSpace(appConfig.Name)
+	if base == "" {
+		base = strings.TrimSpace(applicationName)
+	}
+	base = sanitizeKubernetesName(base)
+	if base == "" {
+		base = "config"
+	}
+	suffix := uuid.NewString()
+	if len(suffix) > 8 {
+		suffix = suffix[:8]
+	}
+	name := sanitizeKubernetesName(base + "-" + suffix)
+	if len(name) > 63 {
+		name = strings.TrimRight(name[:63], "-")
+	}
+	if name == "" {
+		return "config-" + suffix
+	}
+	return name
+}
+
+func sanitizeKubernetesName(value string) string {
+	value = strings.ToLower(strings.TrimSpace(value))
+	var out []rune
+	lastDash := false
+	for _, r := range value {
+		valid := (r >= 'a' && r <= 'z') || (r >= '0' && r <= '9')
+		if valid {
+			out = append(out, r)
+			lastDash = false
+			continue
+		}
+		if !lastDash {
+			out = append(out, '-')
+			lastDash = true
+		}
+	}
+	return strings.Trim(string(out), "-")
 }
