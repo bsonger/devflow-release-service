@@ -36,9 +36,9 @@ spec:
         privileged: true
       env:
         - name: HTTP_PROXY
-          value: http://192.168.1.2:7890
+          value: http://192.168.1.5:7890
         - name: HTTPS_PROXY
-          value: http://192.168.1.2:7890
+          value: http://192.168.1.5:7890
         - name: NO_PROXY
           value: localhost,127.0.0.1,.svc,.cluster.local
         - name: REGISTRY_AUTH_FILE
