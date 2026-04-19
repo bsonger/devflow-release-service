@@ -24,10 +24,10 @@ import (
 var ReleaseService = &releaseService{}
 
 var (
-	ErrImageMissingRuntimeSpecRevision                         = errors.New("image runtime_spec_revision_id is required")
-	ErrRuntimeSpecBindingMismatch                              = errors.New("image runtime_spec_revision_id does not match release application and env")
-	ErrReleaseManifestNotReady                                = errors.New("manifest is not ready")
-	runtimeLookupClient                   runtimeclient.Lookup = runtimeclient.New("")
+	ErrImageMissingRuntimeSpecRevision                      = errors.New("image runtime_spec_revision_id is required")
+	ErrRuntimeSpecBindingMismatch                           = errors.New("image runtime_spec_revision_id does not match release application and env")
+	ErrReleaseManifestNotReady                              = errors.New("manifest is not ready")
+	runtimeLookupClient                runtimeclient.Lookup = runtimeclient.New("")
 )
 
 type releaseManifestReader interface {
@@ -362,8 +362,32 @@ func (s *releaseService) syncArgo(ctx context.Context, release *model.Release) e
 	if err != nil {
 		return err
 	}
+	environmentID := strings.TrimSpace(release.Env)
+	if manifest != nil && strings.TrimSpace(manifest.EnvironmentID) != "" {
+		environmentID = strings.TrimSpace(manifest.EnvironmentID)
+	}
+	target, err := resolveDeployTarget(ctx, release.ApplicationID.String(), environmentID)
+	if err != nil {
+		return err
+	}
 
-	application := buildArgoApplication(release, manifest, app)
+	// Run ordered bootstrap gates before Argo Application apply
+	bootstrap, err := newBootstrapExecutor()
+	if err != nil {
+		log.Error("bootstrap executor creation failed", zap.String("release_id", release.ID.String()), zap.Error(err))
+		return err
+	}
+
+	results, err := bootstrap.runBootstrapGates(ctx, *target, app.ProjectName)
+	for _, res := range results {
+		_ = s.UpdateStep(ctx, release.ID, res.StepName, res.Status, 100, res.Message, res.Start, res.End)
+	}
+	if err != nil {
+		log.Error("bootstrap gates failed", zap.String("release_id", release.ID.String()), zap.Error(err))
+		return err
+	}
+
+	application := buildArgoApplication(release, manifest, app, *target)
 	sc := trace.SpanContextFromContext(ctx)
 	application.Annotations = map[string]string{
 		model.TraceIDAnnotation: sc.TraceID().String(),
@@ -395,14 +419,10 @@ func applyReleaseApplication(ctx context.Context, releaseType string, applicatio
 	return syncFn(ctx, application.Name)
 }
 
-func buildArgoApplication(release *model.Release, manifest *model.Manifest, app *applicationProjection) *appv1.Application {
+func buildArgoApplication(release *model.Release, manifest *model.Manifest, app *applicationProjection, target deployTarget) *appv1.Application {
 	name := app.Name
 	if name == "" {
 		name = release.ApplicationID.String()
-	}
-	namespace := namespaceForEnvironment(strings.TrimSpace(release.Env))
-	if manifest != nil && strings.TrimSpace(manifest.EnvironmentID) != "" {
-		namespace = namespaceForEnvironment(strings.TrimSpace(manifest.EnvironmentID))
 	}
 	source := buildOCIApplicationSource(manifest)
 	if source == nil {
@@ -414,7 +434,7 @@ func buildArgoApplication(release *model.Release, manifest *model.Manifest, app 
 		Spec: appv1.ApplicationSpec{
 			Project:     "app",
 			Source:      source,
-			Destination: appv1.ApplicationDestination{Server: "https://kubernetes.default.svc", Namespace: namespace},
+			Destination: appv1.ApplicationDestination{Server: target.DestinationServer, Namespace: target.Namespace},
 		},
 	}
 }

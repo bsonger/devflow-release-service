@@ -14,21 +14,16 @@ import (
 )
 
 var (
-	ErrManifestImageApplicationMismatch  = errors.New("image does not belong to application")
-	ErrManifestEnvironmentBindingMissing = errors.New("environment is not bound to application")
-	ErrManifestAppConfigMissing          = errors.New("effective app config is missing")
-	ErrManifestWorkloadConfigMissing     = errors.New("effective workload config is missing")
-	ErrManifestRouteTargetInvalid        = errors.New("route points to missing service or port")
+	ErrManifestImageApplicationMismatch = errors.New("image does not belong to application")
+	ErrManifestAppConfigMissing         = errors.New("effective app config is missing")
+	ErrManifestWorkloadConfigMissing    = errors.New("effective workload config is missing")
+	ErrManifestRouteTargetInvalid       = errors.New("route points to missing service or port")
 )
 
 var ManifestService = NewManifestService()
 
 type manifestImageReader interface {
 	Get(context.Context, uuid.UUID) (*model.Image, error)
-}
-
-type manifestOrchestratorReader interface {
-	GetApplicationEnvironment(context.Context, string, string) (*downstream.ApplicationEnvironment, error)
 }
 
 type manifestNetworkReader interface {
@@ -55,7 +50,6 @@ func NewManifestService() *manifestService {
 
 func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
 	runtimeCfg := CurrentRuntimeConfig()
-	orchestrator := downstream.NewOrchestratorManifestClient(strings.TrimSpace(runtimeCfg.Downstream.PlatformOrchestratorBaseURL))
 	networks := downstream.NewNetworkManifestClient(strings.TrimSpace(runtimeCfg.Downstream.NetworkServiceBaseURL))
 	configs := downstream.NewConfigManifestClient(strings.TrimSpace(runtimeCfg.Downstream.ConfigServiceBaseURL))
 	artifacts := newManifestArtifactPublishing(runtimeCfg.ManifestRegistry, runtimeCfg.ManifestRegistryEnabled)
@@ -67,8 +61,9 @@ func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateM
 	if image.ApplicationID != req.ApplicationID {
 		return nil, ErrManifestImageApplicationMismatch
 	}
-	if _, err := orchestrator.GetApplicationEnvironment(ctx, req.ApplicationID.String(), req.EnvironmentID); err != nil {
-		return nil, ErrManifestEnvironmentBindingMissing
+	target, err := resolveDeployTarget(ctx, req.ApplicationID.String(), req.EnvironmentID)
+	if err != nil {
+		return nil, err
 	}
 	appConfig, err := configs.FindAppConfig(ctx, req.ApplicationID.String(), req.EnvironmentID)
 	if err != nil {
@@ -97,7 +92,7 @@ func (s *manifestService) CreateManifest(ctx context.Context, req *model.CreateM
 		return nil, err
 	}
 
-	manifest, err := buildManifest(req, image, application.Name, appConfig, workloadConfig, services, routes, namespaceForEnvironment(req.EnvironmentID), runtimeCfg.ImageRegistry)
+	manifest, err := buildManifest(req, image, application.Name, appConfig, workloadConfig, services, routes, target.Namespace, runtimeCfg.ImageRegistry)
 	if err != nil {
 		return nil, err
 	}

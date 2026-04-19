@@ -17,6 +17,7 @@ import (
 )
 
 const ObserverTokenHeader = "X-Devflow-Observer-Token"
+const VerifyTokenHeader = "X-Devflow-Verify-Token"
 
 var ObserverSharedToken string
 
@@ -62,6 +63,9 @@ func RequireObserverToken(expected string) gin.HandlerFunc {
 			return
 		}
 		token := strings.TrimSpace(c.GetHeader(ObserverTokenHeader))
+		if token == "" {
+			token = strings.TrimSpace(c.GetHeader(VerifyTokenHeader))
+		}
 		if subtle.ConstantTimeCompare([]byte(token), []byte(expected)) != 1 {
 			httpx.WriteError(c, http.StatusUnauthorized, "unauthorized", "unauthorized", nil)
 			c.Abort()

@@ -6,15 +6,20 @@ import (
 
 	appv1 "github.com/argoproj/argo-cd/v3/pkg/apis/application/v1alpha1"
 	argoapi "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned"
+	argov1alpha1 "github.com/argoproj/argo-cd/v3/pkg/client/clientset/versioned/typed/application/v1alpha1"
 	"github.com/bsonger/devflow-service-common/loggingx"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/client-go/rest"
 )
 
-var Client *argoapi.Clientset
+var Client ArgoClientInterface
 
 const namespace = "argocd"
+
+type ArgoClientInterface interface {
+	ArgoprojV1alpha1() argov1alpha1.ArgoprojV1alpha1Interface
+}
 
 type applicationAPI interface {
 	Create(ctx context.Context, app *appv1.Application, opts metav1.CreateOptions) (*appv1.Application, error)
@@ -56,5 +61,19 @@ func applyApplication(ctx context.Context, applications applicationAPI, app *app
 	current.Labels = app.Labels
 
 	_, err = applications.Update(ctx, current, metav1.UpdateOptions{})
+	return err
+}
+
+type appProjectAPI interface {
+	Get(ctx context.Context, name string, opts metav1.GetOptions) (*appv1.AppProject, error)
+	Update(ctx context.Context, project *appv1.AppProject, opts metav1.UpdateOptions) (*appv1.AppProject, error)
+}
+
+func GetAppProject(ctx context.Context, name string) (*appv1.AppProject, error) {
+	return Client.ArgoprojV1alpha1().AppProjects(namespace).Get(ctx, name, metav1.GetOptions{})
+}
+
+func UpdateAppProject(ctx context.Context, project *appv1.AppProject) error {
+	_, err := Client.ArgoprojV1alpha1().AppProjects(namespace).Update(ctx, project, metav1.UpdateOptions{})
 	return err
 }

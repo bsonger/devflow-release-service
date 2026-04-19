@@ -77,7 +77,12 @@ func DefaultReleaseSteps(strategy ReleaseType, releaseAction string) []ReleaseSt
 		applyStepName = "apply install manifests"
 	}
 
-	stepNames := []string{applyStepName}
+	stepNames := []string{
+		"ensure namespace",
+		"ensure pull secret",
+		"ensure appproject destination",
+		applyStepName,
+	}
 	switch strategy {
 	case Canary:
 		stepNames = append(stepNames,

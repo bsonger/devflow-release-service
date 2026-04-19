@@ -30,6 +30,8 @@
 ### Observer writeback
 - `POST /api/v1/images/tekton/tasks`
 - `POST /api/v1/images/tekton/status`
+- `POST /api/v1/verify/argo/events`
+- `POST /api/v1/verify/release/steps`
 
 ### `Release`
 - `GET /api/v1/releases`
@@ -60,7 +62,9 @@
 - when manifest-specific registry fields are unset, OCI publishing falls back to `image_registry.*`
 - `POST /api/v1/images` accepts `application_id`, optional `configuration_revision_id`, optional `runtime_spec_revision_id`, and optional `branch`
 - image creation submits a Tekton `PipelineRun` against `devflow-tekton-image-build` when build dispatch is enabled
-- observer writeback endpoints require `X-Devflow-Observer-Token` and are intended for `devflow-resource-observer` only
+- observer writeback endpoints require `X-Devflow-Observer-Token` (or `X-Devflow-Verify-Token` for compatibility with `devflow-resource-observer`) and are intended for `devflow-resource-observer` only
+- `POST /api/v1/verify/argo/events` accepts `release_id`, `status` (`Succeeded`, `Failed`, `Error`, `Running`), and optional `message`
+- `POST /api/v1/verify/release/steps` accepts `release_id`, `step_name`, `status`, optional `progress` (0-100), and optional `message`
 - `repo_address` and image naming are resolved during image creation
 - image registry target is read from mounted `config.yaml` `image_registry.registry` and `image_registry.namespace`
 - image names follow branch rules: `main` keeps the base name, non-`main` appends a normalized branch suffix

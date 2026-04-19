@@ -68,7 +68,7 @@ func (h *ReleaseHandler) Create(c *gin.Context) {
 	release.WithCreateDefault()
 	_, err := h.svc.Create(c.Request.Context(), release)
 	if err != nil {
-		if errors.Is(err, service.ErrImageMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, service.ErrReleaseManifestNotReady) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) {
+		if errors.Is(err, service.ErrImageMissingRuntimeSpecRevision) || errors.Is(err, service.ErrRuntimeSpecBindingMismatch) || errors.Is(err, service.ErrReleaseManifestNotReady) || errors.Is(err, runtimeclient.ErrRuntimeServiceUnavailable) || errors.Is(err, service.ErrDeployTargetClusterNotReady) || errors.Is(err, service.ErrDeployTargetClusterReadinessMalformed) {
 			httpx.WriteError(c, http.StatusConflict, "failed_precondition", err.Error(), nil)
 			return
 		}

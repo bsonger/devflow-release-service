@@ -13,4 +13,9 @@ func RegisterReleaseRoutes(rg *gin.RouterGroup) {
 	release.POST("", api.ReleaseRouteApi.Create)
 	//release.PUT("/:id", api.ReleaseRouteApi.Update)
 	//release.DELETE("/:id", api.ReleaseRouteApi.Delete)
+
+	writeback := rg.Group("/verify")
+	writeback.Use(api.RequireObserverToken(api.ObserverSharedToken))
+	writeback.POST("/argo/events", api.NewReleaseWritebackHandler().HandleArgoEvent)
+	writeback.POST("/release/steps", api.NewReleaseWritebackHandler().HandleReleaseStep)
 }

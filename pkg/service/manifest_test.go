@@ -156,9 +156,13 @@ func TestBuildManifestFallsBackToConfiguredRegistryForGitRepoAddress(t *testing.
 	}
 }
 
-func TestNamespaceForEnvironmentPrefixesDevflow(t *testing.T) {
-	if got := namespaceForEnvironment("staging"); got != "devflow-staging" {
-		t.Fatalf("namespace = %q, want devflow-staging", got)
+func TestDeriveNamespaceUsesProjectAndEnvironment(t *testing.T) {
+	ns, err := deriveNamespace("Checkout", "Staging")
+	if err != nil {
+		t.Fatalf("deriveNamespace error = %v", err)
+	}
+	if ns != "checkout-staging" {
+		t.Fatalf("namespace = %q, want checkout-staging", ns)
 	}
 }
 

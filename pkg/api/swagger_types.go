@@ -150,6 +150,22 @@ type ManifestDoc struct {
 	UpdatedAt              string                      `json:"updated_at,omitempty"`
 }
 
+type ArgoEventRequest struct {
+	ReleaseID   string `json:"release_id" binding:"required"`
+	Status      string `json:"status" binding:"required"`
+	IntentID    string `json:"intent_id,omitempty"`
+	ExternalRef string `json:"external_ref,omitempty"`
+	Message     string `json:"message,omitempty"`
+}
+
+type ReleaseStepRequest struct {
+	ReleaseID string `json:"release_id" binding:"required"`
+	StepName  string `json:"step_name" binding:"required"`
+	Status    string `json:"status" binding:"required"`
+	Progress  int32  `json:"progress,omitempty"`
+	Message   string `json:"message,omitempty"`
+}
+
 type CreateManifestRequestDoc struct {
 	ApplicationID string `json:"application_id"`
 	EnvironmentID string `json:"environment_id"`

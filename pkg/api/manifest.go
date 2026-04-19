@@ -179,11 +179,24 @@ func writeManifestError(c *gin.Context, err error) {
 	case errors.Is(err, sql.ErrNoRows):
 		httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
 	case errors.Is(err, service.ErrManifestImageApplicationMismatch),
-		errors.Is(err, service.ErrManifestEnvironmentBindingMissing),
 		errors.Is(err, service.ErrManifestAppConfigMissing),
 		errors.Is(err, service.ErrManifestWorkloadConfigMissing),
 		errors.Is(err, service.ErrManifestRouteTargetInvalid),
-		errors.Is(err, service.ErrManifestImageNotDeployable):
+		errors.Is(err, service.ErrManifestImageNotDeployable),
+		errors.Is(err, service.ErrDeployTargetBindingMissing),
+		errors.Is(err, service.ErrDeployTargetBindingMalformed),
+		errors.Is(err, service.ErrDeployTargetApplicationMetadataMissing),
+		errors.Is(err, service.ErrDeployTargetApplicationMetadataMalformed),
+		errors.Is(err, service.ErrDeployTargetProjectMetadataMissing),
+		errors.Is(err, service.ErrDeployTargetProjectMetadataMalformed),
+		errors.Is(err, service.ErrDeployTargetEnvironmentMetadataMissing),
+		errors.Is(err, service.ErrDeployTargetEnvironmentMetadataMalformed),
+		errors.Is(err, service.ErrDeployTargetClusterMetadataMissing),
+		errors.Is(err, service.ErrDeployTargetClusterMetadataMalformed),
+		errors.Is(err, service.ErrDeployTargetClusterNotReady),
+		errors.Is(err, service.ErrDeployTargetClusterReadinessMalformed),
+		errors.Is(err, service.ErrDeployTargetNamespaceInvalid),
+		errors.Is(err, service.ErrDeployTargetClusterServerInvalid):
 		httpx.WriteError(c, http.StatusConflict, "failed_precondition", err.Error(), nil)
 	default:
 		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)

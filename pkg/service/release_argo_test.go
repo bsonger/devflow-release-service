@@ -24,11 +24,12 @@ func TestBuildArgoApplicationUsesManifestOCIArtifactWhenPresent(t *testing.T) {
 		ArtifactTag:        release.ManifestID.String(),
 		ArtifactDigest:     "sha256:abc123",
 	}
+	target := deployTarget{Namespace: "checkout-staging", DestinationServer: "https://cluster-staging.example.com"}
 
 	app := buildArgoApplication(release, manifest, &applicationProjection{
 		Name:        "demo-api",
 		ProjectName: "devflow-staging",
-	})
+	}, target)
 
 	if app.Spec.Source == nil {
 		t.Fatal("expected source")
@@ -45,8 +46,11 @@ func TestBuildArgoApplicationUsesManifestOCIArtifactWhenPresent(t *testing.T) {
 	if app.Spec.Source.Plugin != nil {
 		t.Fatalf("expected plugin source to be cleared, got %+v", app.Spec.Source.Plugin)
 	}
-	if app.Spec.Destination.Namespace != "devflow-staging" {
+	if app.Spec.Destination.Namespace != target.Namespace {
 		t.Fatalf("namespace = %q", app.Spec.Destination.Namespace)
+	}
+	if app.Spec.Destination.Server != target.DestinationServer {
+		t.Fatalf("server = %q", app.Spec.Destination.Server)
 	}
 }
 
@@ -57,14 +61,15 @@ func TestBuildArgoApplicationFallsBackToRepoPluginWithoutArtifact(t *testing.T) 
 		ApplicationID: uuid.New(),
 		ManifestID:    uuid.New(),
 		ImageID:       uuid.New(),
-		Env:           "prod",
+		Env:           "production",
 	}
 	manifest := &model.Manifest{BaseModel: model.BaseModel{ID: release.ManifestID}}
+	target := deployTarget{Namespace: "checkout", DestinationServer: "https://cluster-prod.example.com"}
 
 	app := buildArgoApplication(release, manifest, &applicationProjection{
 		Name:        "demo-api",
-		ProjectName: "devflow-prod",
-	})
+		ProjectName: "checkout",
+	}, target)
 
 	if app.Spec.Source == nil || app.Spec.Source.Plugin == nil {
 		t.Fatal("expected repo plugin fallback source")
@@ -77,6 +82,12 @@ func TestBuildArgoApplicationFallsBackToRepoPluginWithoutArtifact(t *testing.T) 
 	}
 	if len(app.Spec.Source.Plugin.Parameters) != 4 {
 		t.Fatalf("plugin parameters = %d", len(app.Spec.Source.Plugin.Parameters))
+	}
+	if app.Spec.Destination.Namespace != target.Namespace {
+		t.Fatalf("namespace = %q", app.Spec.Destination.Namespace)
+	}
+	if app.Spec.Destination.Server != target.DestinationServer {
+		t.Fatalf("server = %q", app.Spec.Destination.Server)
 	}
 }
 
@@ -101,30 +112,6 @@ func TestBuildOCIApplicationSourceReturnsNilWithoutArtifactRepository(t *testing
 		t.Fatalf("expected nil source, got %+v", source)
 	}
 }
-
-func TestBuildArgoApplicationUsesEnvironmentNamespaceWhenProjectNameEmpty(t *testing.T) {
-	release := &model.Release{
-		BaseModel:     model.BaseModel{ID: uuid.New()},
-		ApplicationID: uuid.New(),
-		ManifestID:    uuid.New(),
-		ImageID:       uuid.New(),
-		Env:           "staging",
-	}
-
-	app := buildArgoApplication(release, &model.Manifest{
-		BaseModel:          model.BaseModel{ID: release.ManifestID},
-		EnvironmentID:      "staging",
-		ArtifactRepository: "zot.zot.svc.cluster.local:5000/devflow/manifests/demo-api/staging",
-		ArtifactDigest:     "sha256:abc123",
-	}, &applicationProjection{
-		Name: "demo-api",
-	})
-
-	if app.Spec.Destination.Namespace != "devflow-staging" {
-		t.Fatalf("namespace = %q, want devflow-staging", app.Spec.Destination.Namespace)
-	}
-}
-
 
 func TestApplyReleaseApplicationTriggersSyncAfterUpgrade(t *testing.T) {
 	app := &appv1.Application{}

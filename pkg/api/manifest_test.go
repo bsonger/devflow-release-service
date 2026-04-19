@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-release-service/pkg/service"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 )
@@ -205,5 +206,137 @@ func TestGetManifestResourcesReturnsGroupedFrozenObjects(t *testing.T) {
 	}
 	if len(payload.Data.Resources.Services) != 1 {
 		t.Fatalf("services len = %d want 1", len(payload.Data.Resources.Services))
+	}
+}
+
+func TestCreateManifestClusterNotReadyReturns409(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			createFn: func(_ context.Context, _ *model.CreateManifestRequest) (*model.Manifest, error) {
+				return nil, service.ErrDeployTargetClusterNotReady
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/manifests", handler.Create)
+
+	body := bytes.NewBufferString(`{"application_id":"11111111-1111-1111-1111-111111111111","environment_id":"env-1","image_id":"33333333-3333-3333-3333-333333333333"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/manifests", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("got %d want %d for cluster not ready", rec.Code, http.StatusConflict)
+	}
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if resp.Error.Code != "failed_precondition" {
+		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
+	}
+}
+
+func TestCreateManifestClusterReadinessMalformedReturns409(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			createFn: func(_ context.Context, _ *model.CreateManifestRequest) (*model.Manifest, error) {
+				return nil, service.ErrDeployTargetClusterReadinessMalformed
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/manifests", handler.Create)
+
+	body := bytes.NewBufferString(`{"application_id":"11111111-1111-1111-1111-111111111111","environment_id":"env-1","image_id":"33333333-3333-3333-3333-333333333333"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/manifests", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("got %d want %d for readiness malformed", rec.Code, http.StatusConflict)
+	}
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if resp.Error.Code != "failed_precondition" {
+		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
+	}
+}
+
+func TestCreateManifestClusterNotReadyDoesNotReturnInternal500(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			createFn: func(_ context.Context, _ *model.CreateManifestRequest) (*model.Manifest, error) {
+				return nil, service.ErrDeployTargetClusterNotReady
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/manifests", handler.Create)
+
+	body := bytes.NewBufferString(`{"application_id":"11111111-1111-1111-1111-111111111111","environment_id":"env-1","image_id":"33333333-3333-3333-3333-333333333333"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/manifests", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code == http.StatusInternalServerError {
+		t.Fatalf("readiness blocker must not surface as 500 internal, got %d", rec.Code)
+	}
+}
+
+func TestCreateManifestBindingMissingReturns409(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			createFn: func(_ context.Context, _ *model.CreateManifestRequest) (*model.Manifest, error) {
+				return nil, service.ErrDeployTargetBindingMissing
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/manifests", handler.Create)
+
+	body := bytes.NewBufferString(`{"application_id":"11111111-1111-1111-1111-111111111111","environment_id":"env-1","image_id":"33333333-3333-3333-3333-333333333333"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/manifests", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("got %d want %d for binding missing", rec.Code, http.StatusConflict)
+	}
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if resp.Error.Code != "failed_precondition" {
+		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
 	}
 }

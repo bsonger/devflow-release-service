@@ -93,3 +93,99 @@ func TestCreateReleaseFailedPreconditionReturnsErrorEnvelope(t *testing.T) {
 		t.Fatalf("got %d want %d", rec.Code, http.StatusConflict)
 	}
 }
+
+func TestCreateReleaseClusterNotReadyReturns409(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			createFn: func(_ context.Context, _ *model.Release) (uuid.UUID, error) {
+				return uuid.Nil, service.ErrDeployTargetClusterNotReady
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/releases", handler.Create)
+
+	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("got %d want %d for cluster not ready", rec.Code, http.StatusConflict)
+	}
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if resp.Error.Code != "failed_precondition" {
+		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
+	}
+}
+
+func TestCreateReleaseClusterReadinessMalformedReturns409(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			createFn: func(_ context.Context, _ *model.Release) (uuid.UUID, error) {
+				return uuid.Nil, service.ErrDeployTargetClusterReadinessMalformed
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/releases", handler.Create)
+
+	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("got %d want %d for readiness malformed", rec.Code, http.StatusConflict)
+	}
+	var resp struct {
+		Error struct {
+			Code    string `json:"code"`
+			Message string `json:"message"`
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
+		t.Fatalf("unmarshal body: %v", err)
+	}
+	if resp.Error.Code != "failed_precondition" {
+		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
+	}
+}
+
+func TestCreateReleaseClusterNotReadyDoesNotReturnInternal500(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			createFn: func(_ context.Context, _ *model.Release) (uuid.UUID, error) {
+				return uuid.Nil, service.ErrDeployTargetClusterNotReady
+			},
+		},
+	}
+
+	r := gin.New()
+	r.POST("/api/v1/releases", handler.Create)
+
+	body := bytes.NewBufferString(`{"manifest_id":"22222222-2222-2222-2222-222222222222"}`)
+	req := httptest.NewRequest(http.MethodPost, "/api/v1/releases", body)
+	req.Header.Set("Content-Type", "application/json")
+	rec := httptest.NewRecorder()
+
+	r.ServeHTTP(rec, req)
+	if rec.Code == http.StatusInternalServerError {
+		t.Fatalf("readiness blocker must not surface as 500 internal, got %d", rec.Code)
+	}
+}
