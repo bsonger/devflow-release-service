@@ -1,0 +1,193 @@
+apiVersion: tekton.dev/v1
+kind: Pipeline
+metadata:
+  name: devflow-tekton-two-service-build-deploy
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-pipeline
+spec:
+  params:
+    - name: git-url
+      type: string
+    - name: git-revision
+      type: string
+      default: main
+    - name: kubectl-namespace
+      type: string
+      default: devflow-staging
+    - name: image-registry
+      type: string
+    - name: image-tag
+      type: string
+      default: staging
+    - name: rollout-timeout
+      type: string
+      default: 300s
+
+    - name: service-a-name
+      type: string
+    - name: service-a-dockerfile
+      type: string
+      default: Dockerfile
+    - name: service-a-manifest-path
+      type: string
+      default: ""
+    - name: service-a-deployment
+      type: string
+    - name: service-a-container
+      type: string
+
+    - name: service-b-name
+      type: string
+    - name: service-b-dockerfile
+      type: string
+      default: Dockerfile
+    - name: service-b-manifest-path
+      type: string
+      default: ""
+    - name: service-b-deployment
+      type: string
+    - name: service-b-container
+      type: string
+  workspaces:
+    - name: source-a
+    - name: source-b
+    - name: dockerconfig
+    - name: ssh
+  tasks:
+    - name: git-clone-a
+      taskRef:
+        kind: Task
+        name: devflow-tekton-git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source-a
+        - name: ssh
+          workspace: ssh
+
+    - name: git-clone-b
+      taskRef:
+        kind: Task
+        name: devflow-tekton-git-clone
+      params:
+        - name: url
+          value: $(params.git-url)
+        - name: revision
+          value: $(params.git-revision)
+      workspaces:
+        - name: output
+          workspace: source-b
+        - name: ssh
+          workspace: ssh
+
+    - name: build-a
+      runAfter:
+        - git-clone-a
+      taskRef:
+        kind: Task
+        name: devflow-tekton-image-build-and-push
+      params:
+        - name: IMAGE_REPOSITORY
+          value: $(params.image-registry)/$(params.service-a-name)
+        - name: IMAGE_TAG
+          value: $(params.image-tag)
+        - name: GIT_TAG
+          value: $(params.image-tag)
+        - name: DOCKERFILE
+          value: $(params.service-a-dockerfile)
+      workspaces:
+        - name: source
+          workspace: source-a
+        - name: dockerconfig
+          workspace: dockerconfig
+        - name: ssh
+          workspace: ssh
+
+    - name: build-b
+      runAfter:
+        - git-clone-b
+      taskRef:
+        kind: Task
+        name: devflow-tekton-image-build-and-push
+      params:
+        - name: IMAGE_REPOSITORY
+          value: $(params.image-registry)/$(params.service-b-name)
+        - name: IMAGE_TAG
+          value: $(params.image-tag)
+        - name: GIT_TAG
+          value: $(params.image-tag)
+        - name: DOCKERFILE
+          value: $(params.service-b-dockerfile)
+      workspaces:
+        - name: source
+          workspace: source-b
+        - name: dockerconfig
+          workspace: dockerconfig
+        - name: ssh
+          workspace: ssh
+
+    - name: deploy-a
+      runAfter:
+        - build-a
+        - build-b
+      taskRef:
+        kind: Task
+        name: devflow-tekton-kubectl-deploy
+      params:
+        - name: kubectl-namespace
+          value: $(params.kubectl-namespace)
+        - name: manifest-path
+          value: $(params.service-a-manifest-path)
+        - name: deployment-name
+          value: $(params.service-a-deployment)
+        - name: container-name
+          value: $(params.service-a-container)
+        - name: image-repository
+          value: $(params.image-registry)/$(params.service-a-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: rollout-timeout
+          value: $(params.rollout-timeout)
+      workspaces:
+        - name: source
+          workspace: source-a
+
+    - name: deploy-b
+      runAfter:
+        - build-a
+        - build-b
+      taskRef:
+        kind: Task
+        name: devflow-tekton-kubectl-deploy
+      params:
+        - name: kubectl-namespace
+          value: $(params.kubectl-namespace)
+        - name: manifest-path
+          value: $(params.service-b-manifest-path)
+        - name: deployment-name
+          value: $(params.service-b-deployment)
+        - name: container-name
+          value: $(params.service-b-container)
+        - name: image-repository
+          value: $(params.image-registry)/$(params.service-b-name)
+        - name: image-tag
+          value: $(params.image-tag)
+        - name: rollout-timeout
+          value: $(params.rollout-timeout)
+      workspaces:
+        - name: source
+          workspace: source-b
+  finally:
+    - name: notify
+      taskRef:
+        kind: Task
+        name: devflow-tekton-notify
+      params:
+        - name: message
+          value: "🎉 Two-service pipeline $(context.pipelineRun.name) finished."

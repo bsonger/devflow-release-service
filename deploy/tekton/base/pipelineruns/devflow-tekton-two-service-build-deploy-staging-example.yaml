@@ -1,0 +1,69 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: devflow-tekton-two-service-build-deploy-run-
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-pipelinerun
+spec:
+  pipelineRef:
+    name: devflow-tekton-two-service-build-deploy
+  params:
+    - name: git-url
+      value: git@github.com:bsonger/devflow.git
+    - name: git-revision
+      value: main
+    - name: image-registry
+      value: registry.cn-hangzhou.aliyuncs.com/devflow
+    - name: image-tag
+      value: staging
+    - name: kubectl-namespace
+      value: devflow-staging
+    - name: rollout-timeout
+      value: 300s
+
+    - name: service-a-name
+      value: devflow-app-service
+    - name: service-a-dockerfile
+      value: devflow-app-service/Dockerfile
+    - name: service-a-manifest-path
+      value: deploy/devflow-staging/10-app-service.yaml
+    - name: service-a-deployment
+      value: devflow-app-service
+    - name: service-a-container
+      value: devflow-app-service
+
+    - name: service-b-name
+      value: devflow-platform-orchestrator
+    - name: service-b-dockerfile
+      value: devflow-platform-orchestrator/Dockerfile
+    - name: service-b-manifest-path
+      value: deploy/devflow-staging/15-platform-orchestrator.yaml
+    - name: service-b-deployment
+      value: devflow-platform-orchestrator
+    - name: service-b-container
+      value: devflow-platform-orchestrator
+  workspaces:
+    - name: source-a
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+    - name: source-b
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+    - name: dockerconfig
+      secret:
+        secretName: aliyun-docker-config
+    - name: ssh
+      secret:
+        secretName: devflow-tekton-ssh

@@ -1,0 +1,60 @@
+apiVersion: tekton.dev/v1
+kind: Task
+metadata:
+  name: devflow-tekton-kubectl-deploy
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-task
+spec:
+  description: Apply manifests, update deployment image, and wait for rollout.
+  params:
+    - name: kubectl-namespace
+      type: string
+      default: devflow-staging
+    - name: manifest-path
+      type: string
+      default: ""
+    - name: deployment-name
+      type: string
+    - name: container-name
+      type: string
+    - name: image-repository
+      type: string
+    - name: image-tag
+      type: string
+    - name: rollout-timeout
+      type: string
+      default: 300s
+  workspaces:
+    - name: source
+  steps:
+    - name: deploy
+      image: bitnami/kubectl:1.30.3
+      script: |
+        #!/bin/sh
+        set -eu
+
+        NS="$(params.kubectl-namespace)"
+        DEPLOYMENT="$(params.deployment-name)"
+        CONTAINER="$(params.container-name)"
+        IMAGE="$(params.image-repository):$(params.image-tag)"
+        MANIFEST_PATH="$(params.manifest-path)"
+        TIMEOUT="$(params.rollout-timeout)"
+        SRC="$(workspaces.source.path)"
+
+        if [ -n "${MANIFEST_PATH}" ]; then
+          TARGET="${SRC}/${MANIFEST_PATH}"
+          if [ ! -e "${TARGET}" ]; then
+            echo "ERROR: manifest path not found: ${TARGET}"
+            exit 1
+          fi
+          echo "📦 Applying manifests from ${TARGET} into namespace ${NS}"
+          kubectl apply -n "${NS}" -f "${TARGET}"
+        fi
+
+        echo "🖼️ Setting image on deployment/${DEPLOYMENT} container ${CONTAINER} -> ${IMAGE}"
+        kubectl set image deployment/${DEPLOYMENT} ${CONTAINER}=${IMAGE} -n "${NS}"
+
+        echo "⏳ Waiting for rollout of deployment/${DEPLOYMENT}"
+        kubectl rollout status deployment/${DEPLOYMENT} -n "${NS}" --timeout="${TIMEOUT}"
