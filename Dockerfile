@@ -19,7 +19,7 @@ RUN rm -rf /root/.ssh /app/.tekton-ssh
 
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o devflow-release-service ./cmd
 
-FROM alpine:3.22
+FROM registry.cn-hangzhou.aliyuncs.com/devflow/alpine:3.22
 
 WORKDIR /app
 
