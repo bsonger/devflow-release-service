@@ -12,4 +12,5 @@ resources:
   - tasks/devflow-tekton-kubectl-deploy.yaml
   - tasks/devflow-tekton-notify.yaml
   - pipelines/devflow-tekton-image-build.yaml
+  - pipelines/devflow-tekton-image-build-push-only.yaml
   - pipelines/devflow-tekton-two-service-build-deploy.yaml

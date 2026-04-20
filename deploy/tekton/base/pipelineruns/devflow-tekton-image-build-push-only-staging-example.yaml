@@ -1,0 +1,81 @@
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: devflow-tekton-image-build-push-only-run-
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-pipelinerun
+spec:
+  pipelineRef:
+    name: devflow-tekton-image-build-push-only
+  params:
+    - name: git-url
+      value: git@github.com:bsonger/devflow-app-service.git
+    - name: git-revision
+      value: main
+    - name: image-registry
+      value: registry.cn-hangzhou.aliyuncs.com/devflow
+    - name: name
+      value: devflow-app-service
+    - name: image-tag
+      value: staging
+    - name: DOCKERFILE
+      value: Dockerfile
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+          storageClassName: local-path
+    - name: dockerconfig
+      secret:
+        secretName: aliyun-docker-config
+    - name: ssh
+      secret:
+        secretName: git-ssh-secret
+---
+apiVersion: tekton.dev/v1
+kind: PipelineRun
+metadata:
+  generateName: devflow-tekton-image-build-push-only-run-
+  namespace: tekton-pipelines
+  labels:
+    app.kubernetes.io/part-of: devflow
+    app.kubernetes.io/component: tekton-pipelinerun
+spec:
+  pipelineRef:
+    name: devflow-tekton-image-build-push-only
+  params:
+    - name: git-url
+      value: git@github.com:bsonger/devflow-platform-orchestrator.git
+    - name: git-revision
+      value: main
+    - name: image-registry
+      value: registry.cn-hangzhou.aliyuncs.com/devflow
+    - name: name
+      value: devflow-platform-orchestrator
+    - name: image-tag
+      value: staging
+    - name: DOCKERFILE
+      value: Dockerfile
+  workspaces:
+    - name: source
+      volumeClaimTemplate:
+        spec:
+          accessModes:
+            - ReadWriteOnce
+          resources:
+            requests:
+              storage: 5Gi
+          storageClassName: local-path
+    - name: dockerconfig
+      secret:
+        secretName: aliyun-docker-config
+    - name: ssh
+      secret:
+        secretName: git-ssh-secret

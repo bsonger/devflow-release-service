@@ -29,6 +29,27 @@ The image patch step defaults to the in-cluster staging release-service endpoint
 
 - `http://devflow-release-service.devflow-staging.svc.cluster.local:8083`
 
+## Push-only build entrypoint for stale staging artifacts
+
+When staging is blocked by stale mutable `:staging` tags and the goal is to refresh images before a separately controlled rollout, use the repo-managed push-only pipeline:
+
+- pipeline: `devflow-tekton-image-build-push-only`
+- example `PipelineRun`: `deploy/tekton/base/pipelineruns/devflow-tekton-image-build-push-only-staging-example.yaml`
+
+Apply the example with:
+
+```bash
+kubectl apply -f deploy/tekton/base/pipelineruns/devflow-tekton-image-build-push-only-staging-example.yaml
+```
+
+The committed example includes two independent `PipelineRun` specs for the current M001 remediation targets:
+- `devflow-app-service` from `git@github.com:bsonger/devflow-app-service.git`
+- `devflow-platform-orchestrator` from `git@github.com:bsonger/devflow-platform-orchestrator.git`
+
+The `source` workspace explicitly sets `storageClassName: local-path` because this cluster does not auto-assign a default storage class for Tekton-generated PVCs. The SSH workspace uses the existing `git-ssh-secret` secret in `tekton-pipelines`.
+
+After the builds finish, verify the new digest is actually in use in `devflow-staging` before treating the publication as successful.
+
 ## Two-service build + direct deploy entrypoint
 
 `devflow-tekton-two-service-build-deploy` is a generic pipeline for building two services in parallel and deploying them directly with `kubectl` after both builds succeed.
