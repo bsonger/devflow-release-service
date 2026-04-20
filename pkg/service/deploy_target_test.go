@@ -103,6 +103,36 @@ func TestResolveDeployTargetNonProductionNamespaceNormalization(t *testing.T) {
 	}
 }
 
+func TestResolveDeployTargetProductionUUIDEnvironmentStillUsesProjectNamespace(t *testing.T) {
+	resolver := &deployTargetResolver{
+		bindingReader: fakeBindingReader{binding: &downstream.ApplicationEnvironment{
+			ID:            "360696d1-4255-4065-8030-04ee56de8b12",
+			ApplicationID: "e712e979-3728-444f-9808-20ea6fc655a5",
+			Environment: downstream.ApplicationEnvironmentRef{
+				ID:   "13e18088-ae0a-427c-9f0e-3b0ae6bef13f",
+				Name: "production",
+			},
+		}},
+		ownerReader: fakeOwnerReader{
+			application: &downstream.AppApplication{ID: "e712e979-3728-444f-9808-20ea6fc655a5", ProjectID: "5355c518-97d3-45ac-9070-229960c2eaec", Name: "devflow-app-service"},
+			project:     &downstream.AppProject{ID: "5355c518-97d3-45ac-9070-229960c2eaec", Name: "devflow"},
+			environment: &downstream.AppEnvironment{ID: "13e18088-ae0a-427c-9f0e-3b0ae6bef13f", Name: "production", ClusterID: "58472672-15ec-4616-a3a0-4475d0f841dc"},
+			cluster:     &downstream.AppCluster{ID: "58472672-15ec-4616-a3a0-4475d0f841dc", Name: "shared-production", Server: "https://kubernetes.default.svc", OnboardingReady: true, OnboardingCheckedAt: "2026-04-20T00:24:53Z"},
+		},
+	}
+
+	target, err := resolver.Resolve(context.Background(), "e712e979-3728-444f-9808-20ea6fc655a5", "13e18088-ae0a-427c-9f0e-3b0ae6bef13f")
+	if err != nil {
+		t.Fatalf("Resolve error = %v", err)
+	}
+	if target.Namespace != "devflow" {
+		t.Fatalf("namespace = %q, want devflow", target.Namespace)
+	}
+	if target.EnvironmentName != "production" {
+		t.Fatalf("environment name = %q, want production", target.EnvironmentName)
+	}
+}
+
 func TestResolveDeployTargetReturnsMissingBindingError(t *testing.T) {
 	resolver := &deployTargetResolver{
 		bindingReader: fakeBindingReader{err: errors.New("downstream request failed: 404 Not Found")},

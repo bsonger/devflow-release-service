@@ -6,8 +6,14 @@ import (
 )
 
 type ApplicationEnvironment struct {
-	ID            string `json:"id"`
-	ApplicationID string `json:"application_id"`
+	ID            string                    `json:"id"`
+	ApplicationID string                    `json:"application_id"`
+	Environment   ApplicationEnvironmentRef `json:"environment,omitempty"`
+}
+
+type ApplicationEnvironmentRef struct {
+	ID   string `json:"id,omitempty"`
+	Name string `json:"name,omitempty"`
 }
 
 type OrchestratorManifestClient struct{ *Client }

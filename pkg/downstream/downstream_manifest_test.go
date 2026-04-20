@@ -13,7 +13,7 @@ func TestManifestBindingClientUsesApplicationEnvironmentEndpoint(t *testing.T) {
 		if r.URL.Path != "/api/v1/platform/applications/app-1/environments/env-1" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		_, _ = io.WriteString(w, `{"data":{"id":"ae-1","application_id":"app-1"}}`)
+		_, _ = io.WriteString(w, `{"data":{"id":"ae-1","application_id":"app-1","environment":{"id":"env-1","name":"production"}}}`)
 	}))
 	defer ts.Close()
 
@@ -25,6 +25,9 @@ func TestManifestBindingClientUsesApplicationEnvironmentEndpoint(t *testing.T) {
 	if got.ID != "ae-1" || got.ApplicationID != "app-1" {
 		t.Fatalf("unexpected payload %+v", got)
 	}
+	if got.Environment.ID != "env-1" || got.Environment.Name != "production" {
+		t.Fatalf("unexpected environment payload %+v", got.Environment)
+	}
 }
 
 func TestManifestBindingClientAcceptsBareJSONResponse(t *testing.T) {
@@ -32,7 +35,7 @@ func TestManifestBindingClientAcceptsBareJSONResponse(t *testing.T) {
 		if r.URL.Path != "/api/v1/platform/applications/app-1/environments/staging" {
 			t.Fatalf("unexpected path %s", r.URL.Path)
 		}
-		_, _ = io.WriteString(w, `{"id":"ae-1","application_id":"app-1"}`)
+		_, _ = io.WriteString(w, `{"id":"ae-1","application_id":"app-1","environment":{"id":"staging","name":"staging"}}`)
 	}))
 	defer ts.Close()
 
@@ -43,6 +46,9 @@ func TestManifestBindingClientAcceptsBareJSONResponse(t *testing.T) {
 	}
 	if got.ID != "ae-1" || got.ApplicationID != "app-1" {
 		t.Fatalf("unexpected payload %+v", got)
+	}
+	if got.Environment.ID != "staging" || got.Environment.Name != "staging" {
+		t.Fatalf("unexpected environment payload %+v", got.Environment)
 	}
 }
 
