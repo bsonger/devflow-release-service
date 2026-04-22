@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/bsonger/devflow-release-service/pkg/downstream"
 	"github.com/bsonger/devflow-release-service/pkg/model"
@@ -199,6 +200,18 @@ func (s *manifestService) Get(ctx context.Context, id uuid.UUID) (*model.Manifes
 		from manifests
 		where id = $1 and deleted_at is null
 	`, id))
+}
+
+func (s *manifestService) Delete(ctx context.Context, id uuid.UUID) error {
+	result, err := store.DB().ExecContext(ctx, `
+		update manifests
+		set deleted_at = $2, updated_at = $2
+		where id = $1 and deleted_at is null
+	`, id, time.Now())
+	if err != nil {
+		return err
+	}
+	return ensureRowsAffected(result)
 }
 
 func buildManifestResourcesView(item *model.Manifest) (*model.ManifestResourcesView, error) {

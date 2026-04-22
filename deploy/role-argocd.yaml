@@ -9,4 +9,4 @@ rules:
     verbs: ["create", "get", "list", "watch", "patch", "update"]
   - apiGroups: ["argoproj.io"]
     resources: ["appprojects"]
-    verbs: ["get", "list", "watch"]
+    verbs: ["get", "list", "watch", "patch", "update"]

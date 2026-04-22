@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -18,6 +19,7 @@ type stubReleaseService struct {
 	createFn func(context.Context, *model.Release) (uuid.UUID, error)
 	getFn    func(context.Context, uuid.UUID) (*model.Release, error)
 	listFn   func(context.Context, service.ReleaseListFilter) ([]*model.Release, error)
+	deleteFn func(context.Context, uuid.UUID) error
 }
 
 func (s stubReleaseService) Create(ctx context.Context, release *model.Release) (uuid.UUID, error) {
@@ -30,6 +32,10 @@ func (s stubReleaseService) Get(ctx context.Context, id uuid.UUID) (*model.Relea
 
 func (s stubReleaseService) List(ctx context.Context, filter service.ReleaseListFilter) ([]*model.Release, error) {
 	return s.listFn(ctx, filter)
+}
+
+func (s stubReleaseService) Delete(ctx context.Context, id uuid.UUID) error {
+	return s.deleteFn(ctx, id)
 }
 
 func TestCreateReleaseReturnsEnvelope(t *testing.T) {
@@ -164,6 +170,9 @@ func TestCreateReleaseClusterReadinessMalformedReturns409(t *testing.T) {
 	if resp.Error.Code != "failed_precondition" {
 		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
 	}
+	if resp.Error.Message != service.ErrDeployTargetClusterReadinessMalformed.Error() {
+		t.Fatalf("error message = %q, want %q", resp.Error.Message, service.ErrDeployTargetClusterReadinessMalformed.Error())
+	}
 }
 
 func TestCreateReleaseClusterNotReadyDoesNotReturnInternal500(t *testing.T) {
@@ -187,5 +196,67 @@ func TestCreateReleaseClusterNotReadyDoesNotReturnInternal500(t *testing.T) {
 	r.ServeHTTP(rec, req)
 	if rec.Code == http.StatusInternalServerError {
 		t.Fatalf("readiness blocker must not surface as 500 internal, got %d", rec.Code)
+	}
+}
+
+func TestDeleteReleaseReturns204(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	releaseID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			deleteFn: func(_ context.Context, id uuid.UUID) error {
+				if id != releaseID {
+					t.Fatalf("id = %s want %s", id, releaseID)
+				}
+				return nil
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/releases/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/releases/"+releaseID.String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("got %d want %d body=%s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+}
+
+func TestDeleteReleaseNotFoundReturns404(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			deleteFn: func(_ context.Context, _ uuid.UUID) error {
+				return sql.ErrNoRows
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/releases/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/releases/"+uuid.New().String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("got %d want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestDeleteReleaseInvalidIDReturns400(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ReleaseHandler{
+		svc: stubReleaseService{
+			deleteFn: func(_ context.Context, _ uuid.UUID) error {
+				t.Fatal("deleteFn should not be called for invalid id")
+				return nil
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/releases/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/releases/not-a-uuid", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d want %d", rec.Code, http.StatusBadRequest)
 	}
 }

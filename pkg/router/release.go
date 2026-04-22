@@ -12,7 +12,7 @@ func RegisterReleaseRoutes(rg *gin.RouterGroup) {
 	release.GET("/:id", api.ReleaseRouteApi.Get)
 	release.POST("", api.ReleaseRouteApi.Create)
 	//release.PUT("/:id", api.ReleaseRouteApi.Update)
-	//release.DELETE("/:id", api.ReleaseRouteApi.Delete)
+	release.DELETE("/:id", api.ReleaseRouteApi.Delete)
 
 	writeback := rg.Group("/verify")
 	writeback.Use(api.RequireObserverToken(api.ObserverSharedToken))

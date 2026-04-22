@@ -20,6 +20,7 @@ type manifestService interface {
 	List(context.Context, model.ManifestListFilter) ([]model.Manifest, error)
 	Get(context.Context, uuid.UUID) (*model.Manifest, error)
 	GetResources(context.Context, uuid.UUID) (*model.ManifestResourcesView, error)
+	Delete(context.Context, uuid.UUID) error
 }
 
 type ManifestHandler struct {
@@ -172,6 +173,32 @@ func (h *ManifestHandler) GetResources(c *gin.Context) {
 		return
 	}
 	httpx.WriteData(c, http.StatusOK, item)
+}
+
+// DeleteManifest godoc
+// @Summary Delete manifest
+// @Tags Manifest
+// @Param id path string true "Manifest ID"
+// @Success 204
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/manifests/{id} [delete]
+func (h *ManifestHandler) Delete(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
+		return
+	}
+	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 func writeManifestError(c *gin.Context, err error) {

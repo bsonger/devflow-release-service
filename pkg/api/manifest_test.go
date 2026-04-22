@@ -21,6 +21,7 @@ type stubManifestService struct {
 	listFn         func(context.Context, model.ManifestListFilter) ([]model.Manifest, error)
 	getFn          func(context.Context, uuid.UUID) (*model.Manifest, error)
 	getResourcesFn func(context.Context, uuid.UUID) (*model.ManifestResourcesView, error)
+	deleteFn       func(context.Context, uuid.UUID) error
 }
 
 func (s stubManifestService) CreateManifest(ctx context.Context, req *model.CreateManifestRequest) (*model.Manifest, error) {
@@ -37,6 +38,10 @@ func (s stubManifestService) Get(ctx context.Context, id uuid.UUID) (*model.Mani
 
 func (s stubManifestService) GetResources(ctx context.Context, id uuid.UUID) (*model.ManifestResourcesView, error) {
 	return s.getResourcesFn(ctx, id)
+}
+
+func (s stubManifestService) Delete(ctx context.Context, id uuid.UUID) error {
+	return s.deleteFn(ctx, id)
 }
 
 func TestCreateManifestReturnsCreated(t *testing.T) {
@@ -279,6 +284,9 @@ func TestCreateManifestClusterReadinessMalformedReturns409(t *testing.T) {
 	if resp.Error.Code != "failed_precondition" {
 		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
 	}
+	if resp.Error.Message != service.ErrDeployTargetClusterReadinessMalformed.Error() {
+		t.Fatalf("error message = %q, want %q", resp.Error.Message, service.ErrDeployTargetClusterReadinessMalformed.Error())
+	}
 }
 
 func TestCreateManifestClusterNotReadyDoesNotReturnInternal500(t *testing.T) {
@@ -338,5 +346,67 @@ func TestCreateManifestBindingMissingReturns409(t *testing.T) {
 	}
 	if resp.Error.Code != "failed_precondition" {
 		t.Fatalf("error code = %q, want failed_precondition", resp.Error.Code)
+	}
+}
+
+func TestDeleteManifestReturns204(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	manifestID := uuid.MustParse("11111111-1111-1111-1111-111111111111")
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			deleteFn: func(_ context.Context, id uuid.UUID) error {
+				if id != manifestID {
+					t.Fatalf("id = %s want %s", id, manifestID)
+				}
+				return nil
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/manifests/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/manifests/"+manifestID.String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNoContent {
+		t.Fatalf("got %d want %d body=%s", rec.Code, http.StatusNoContent, rec.Body.String())
+	}
+}
+
+func TestDeleteManifestNotFoundReturns404(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			deleteFn: func(_ context.Context, _ uuid.UUID) error {
+				return sql.ErrNoRows
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/manifests/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/manifests/"+uuid.New().String(), nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("got %d want %d", rec.Code, http.StatusNotFound)
+	}
+}
+
+func TestDeleteManifestInvalidIDReturns400(t *testing.T) {
+	gin.SetMode(gin.ReleaseMode)
+	handler := &ManifestHandler{
+		svc: stubManifestService{
+			deleteFn: func(_ context.Context, _ uuid.UUID) error {
+				t.Fatal("deleteFn should not be called for invalid id")
+				return nil
+			},
+		},
+	}
+	r := gin.New()
+	r.DELETE("/api/v1/manifests/:id", handler.Delete)
+	req := httptest.NewRequest(http.MethodDelete, "/api/v1/manifests/not-a-uuid", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("got %d want %d", rec.Code, http.StatusBadRequest)
 	}
 }

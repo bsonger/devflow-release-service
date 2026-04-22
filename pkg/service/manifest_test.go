@@ -1,13 +1,59 @@
 package service
 
 import (
+	"context"
+	"database/sql"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/bsonger/devflow-release-service/pkg/downstream"
 	"github.com/bsonger/devflow-release-service/pkg/model"
+	"github.com/bsonger/devflow-release-service/pkg/store"
 	"github.com/google/uuid"
+	_ "modernc.org/sqlite"
 )
+
+func setupManifestTestDB(t *testing.T) {
+	t.Helper()
+	db, err := sql.Open("sqlite", ":memory:")
+	if err != nil {
+		t.Fatalf("open sqlite: %v", err)
+	}
+	createTable := `
+CREATE TABLE manifests (
+  id TEXT PRIMARY KEY,
+  application_id TEXT NOT NULL,
+  environment_id TEXT NOT NULL,
+  image_id TEXT NOT NULL,
+  image_ref TEXT NOT NULL,
+  artifact_repository TEXT NOT NULL DEFAULT '',
+  artifact_tag TEXT NOT NULL DEFAULT '',
+  artifact_ref TEXT NOT NULL DEFAULT '',
+  artifact_digest TEXT NOT NULL DEFAULT '',
+  artifact_media_type TEXT NOT NULL DEFAULT '',
+  artifact_pushed_at DATETIME NULL,
+  services_snapshot TEXT NOT NULL DEFAULT '[]',
+  routes_snapshot TEXT NOT NULL DEFAULT '[]',
+  app_config_snapshot TEXT NOT NULL DEFAULT '{}',
+  workload_config_snapshot TEXT NOT NULL DEFAULT '{}',
+  rendered_objects TEXT NOT NULL DEFAULT '[]',
+  rendered_yaml TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  deleted_at DATETIME NULL
+);
+`
+	if _, err := db.Exec(createTable); err != nil {
+		t.Fatalf("create table: %v", err)
+	}
+	store.InitPostgres(db)
+	t.Cleanup(func() {
+		db.Close()
+		store.InitPostgres(nil)
+	})
+}
 
 func TestBuildManifestPrefersDigestAndRendersObjects(t *testing.T) {
 	req := &model.CreateManifestRequest{
@@ -172,4 +218,47 @@ func mustUUID(value string) uuid.UUID {
 		panic(err)
 	}
 	return id
+}
+
+func TestManifestDeleteSoftDeletesByID(t *testing.T) {
+	setupManifestTestDB(t)
+	manifestID := uuid.New()
+	appID := uuid.New()
+	imageID := uuid.New()
+	now := time.Now()
+
+	_, err := store.DB().ExecContext(context.Background(), `
+		insert into manifests (id, application_id, environment_id, image_id, image_ref, status, created_at, updated_at, deleted_at)
+		values ($1,$2,'staging',$3,'repo/demo@sha256:abc','Ready',$4,$5,null)
+	`, manifestID.String(), appID.String(), imageID.String(), now, now)
+	if err != nil {
+		t.Fatalf("insert failed: %v", err)
+	}
+
+	svc := &manifestService{}
+	err = svc.Delete(context.Background(), manifestID)
+	if err != nil {
+		t.Fatalf("delete failed: %v", err)
+	}
+
+	// Verify the manifest is no longer retrievable via Get
+	_, err = svc.Get(context.Background(), manifestID)
+	if err == nil {
+		t.Fatal("expected error after soft delete")
+	}
+	if err != sql.ErrNoRows {
+		t.Fatalf("expected sql.ErrNoRows, got %v", err)
+	}
+}
+
+func TestManifestDeleteReturnsNotFoundForMissingID(t *testing.T) {
+	setupManifestTestDB(t)
+	svc := &manifestService{}
+	err := svc.Delete(context.Background(), uuid.New())
+	if err == nil {
+		t.Fatal("expected error for missing manifest")
+	}
+	if err != sql.ErrNoRows {
+		t.Fatalf("expected sql.ErrNoRows, got %v", err)
+	}
 }

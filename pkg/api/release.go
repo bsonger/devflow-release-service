@@ -20,6 +20,7 @@ type releaseService interface {
 	Create(ctx context.Context, release *model.Release) (uuid.UUID, error)
 	Get(ctx context.Context, id uuid.UUID) (*model.Release, error)
 	List(ctx context.Context, filter service.ReleaseListFilter) ([]*model.Release, error)
+	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type ReleaseHandler struct {
@@ -103,6 +104,32 @@ func (h *ReleaseHandler) Get(c *gin.Context) {
 	}
 
 	httpx.WriteData(c, http.StatusOK, release)
+}
+
+// Delete
+// @Summary Delete release
+// @Tags Release
+// @Param id path string true "Release ID"
+// @Success 204
+// @Failure 400 {object} httpx.ErrorResponse
+// @Failure 404 {object} httpx.ErrorResponse
+// @Failure 500 {object} httpx.ErrorResponse
+// @Router /api/v1/releases/{id} [delete]
+func (h *ReleaseHandler) Delete(c *gin.Context) {
+	id, err := uuid.Parse(c.Param("id"))
+	if err != nil {
+		httpx.WriteError(c, http.StatusBadRequest, "invalid_argument", "invalid id", nil)
+		return
+	}
+	if err := h.svc.Delete(c.Request.Context(), id); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			httpx.WriteError(c, http.StatusNotFound, "not_found", "not found", nil)
+			return
+		}
+		httpx.WriteError(c, http.StatusInternalServerError, "internal", err.Error(), nil)
+		return
+	}
+	c.Status(http.StatusNoContent)
 }
 
 // List
